@@ -6,12 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/babarot/enter/internal/config"
 	"github.com/babarot/enter/internal/module"
 )
 
 type GcpModule struct{}
 
-func (m *GcpModule) Name() string { return "gcp" }
+func (m *GcpModule) Name() string { return config.ModuleGcp }
 
 type gcpInfo struct {
 	project string

@@ -5,13 +5,14 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/babarot/enter/internal/config"
 	"github.com/babarot/enter/internal/module"
 	"github.com/goccy/go-yaml"
 )
 
 type KubeModule struct{}
 
-func (m *KubeModule) Name() string { return "kube" }
+func (m *KubeModule) Name() string { return config.ModuleKube }
 
 type kubeInfo struct {
 	context   string

@@ -4,12 +4,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/babarot/enter/internal/config"
 	"github.com/babarot/enter/internal/module"
 )
 
 type CwdModule struct{}
 
-func (m *CwdModule) Name() string { return "cwd" }
+func (m *CwdModule) Name() string { return config.ModuleCwd }
 
 func (m *CwdModule) Run(ctx *module.Context) *module.Output {
 	if !ctx.Config.Modules.Cwd.Enabled {
@@ -33,14 +34,14 @@ func formatPath(path, home, style string) string {
 	}
 
 	switch style {
-	case "full":
+	case config.CwdStyleFull:
 		return path
-	case "short":
+	case config.CwdStyleShort:
 		return shortenPath(path)
-	case "basename":
+	case config.CwdStyleBasename:
 		parts := strings.Split(path, "/")
 		return parts[len(parts)-1]
-	default: // "parent"
+	default: // config.CwdStyleParent
 		parts := strings.Split(path, "/")
 		// Filter empty strings
 		var filtered []string

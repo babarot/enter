@@ -17,7 +17,7 @@ import (
 
 type ClaudeModule struct{}
 
-func (m *ClaudeModule) Name() string { return "claude" }
+func (m *ClaudeModule) Name() string { return config.ModuleClaude }
 
 type usageData struct {
 	FiveHour *usageWindow `json:"five_hour"`
@@ -36,7 +36,7 @@ func (m *ClaudeModule) Run(ctx *module.Context) *module.Output {
 		return nil
 	}
 
-	if cfg.Mode == "auto" && !detectClaudeProject(ctx.Cwd) {
+	if cfg.Mode == config.ClaudeModeAuto && !detectClaudeProject(ctx.Cwd) {
 		return nil
 	}
 
@@ -188,9 +188,9 @@ func hasClaudeFiles(dir string) bool {
 func buildBar(pct, width int, style string) string {
 	filled, empty := "▰", "▱" // block (default)
 	switch style {
-	case "dot":
+	case config.BarStyleDot:
 		filled, empty = "●", "○"
-	case "fill":
+	case config.BarStyleFill:
 		filled, empty = "█", "░"
 	}
 
@@ -225,7 +225,7 @@ func formatReset(isoStr, displayStyle, timeStyle string) string {
 		return "?"
 	}
 
-	if timeStyle == "relative" {
+	if timeStyle == config.TimeStyleRelative {
 		return formatRelativeTime(t)
 	}
 
@@ -308,7 +308,7 @@ func buildConfigView(cwd, mode string) []module.Segment {
 	var segments []module.Segment
 	first := true
 	for _, item := range items {
-		if mode == "auto" && !item.exists {
+		if mode == config.ClaudeModeAuto && !item.exists {
 			continue
 		}
 
