@@ -103,132 +103,57 @@ separator: " │ "
 #   on_cd  - only when directory changed
 trigger: "always"
 
-# Module display order is determined by the key order in this file.
-# Reorder the module sections below to change the display order.
-# Modules not listed here are appended in default order.
+# Key display style in table format:
+#   flat - "git.sign"
+#   tree - "├── sign"
+key_style: "tree"
+
+# Module display order follows YAML key order.
+# Reorder sections below to change display order.
+# Unlisted modules are appended in default order.
 modules:
-  # ── cwd ──────────────────────────────────────────
   cwd:
     enabled: true
+    style: "short"            # short | parent | full | basename
 
-    # Path display style:
-    #   short    - "~/s/g/babarot/enter" (abbreviated, keep last 2)
-    #   parent   - "babarot/enter" (parent + basename)
-    #   full     - "~/src/github.com/babarot/enter"
-    #   basename - "enter"
-    style: "short"
-
-  # ── git ──────────────────────────────────────────
   git:
     enabled: true
+    indicator: true           # show "not a git repo" outside repos
+    url:
+      enabled: true           # repository HTTPS URL (parsed from remote)
+    cwd:
+      enabled: true
+      style: "tree"           # breadcrumb | tree
+    sign:
+      symbols:
+        unstaged: "*"
+        staged: "+"
+        stash: "$"
+        untracked: "%"
+        ahead: "↑"
+        behind: "↓"
+    status:
+      enabled: true
+      style: "short"          # short | long
 
-    # Show the repository HTTPS URL (parsed from remote origin)
-    # Supports: git@, ssh://, https:// remote formats
-    # Table key: git.url
-    show_repo: true
-
-    # Show "not a git repo" when outside a git repository
-    show_indicator: true
-
-    # Show current position within the repository
-    # Table key: git.cwd
-    # At repo root: "/"
-    # In subdirectory: depends on tree_style
-    show_tree: true
-
-    # Show git status output
-    # Table key: git.status
-    # Color-coded: M=yellow, A=green, D=red, ??=muted (short)
-    #              Section-based coloring (long)
-    show_status: true
-
-    # How to display the repo position:
-    #   tree       - tree visualization with └── branches
-    #   breadcrumb - "/enter → cmd → enter"
-    tree_style: "tree"
-
-    # Git status output format:
-    #   short - "M  file.go" (git status --short)
-    #   long  - full git status output with sections
-    status_style: "short"
-
-    # Customize git status symbols
-    symbols:
-      unstaged: "*"     # Unstaged changes
-      staged: "+"       # Staged changes
-      stash: "$"        # Stash entries exist
-      untracked: "%"    # Untracked files
-      ahead: "↑"        # Commits ahead of upstream
-      behind: "↓"       # Commits behind upstream
-
-  # ── kube ─────────────────────────────────────────
   kube:
     enabled: false
-
     context:
-      # Strip cloud provider prefixes from context name
-      # GKE: gke_project_region_cluster → project/cluster
-      # EKS: arn:aws:eks:region:account:cluster/name → name
-      # AKS: aks_project_region_cluster → project/cluster
-      clean: true
+      clean: true             # strip cloud provider prefixes (GKE/EKS/AKS)
 
-    # Reads from $KUBECONFIG (colon-separated, multiple files)
-    # Falls back to ~/.kube/config
-    # Empty namespace defaults to "default"
-
-  # ── gcp ──────────────────────────────────────────
   gcp:
     enabled: false
 
-    # Sub-keys: gcp.project, gcp.account, gcp.region, gcp.config
-    # gcp.config only shown when active config is not "default"
-    #
-    # Resolution order (per field):
-    # 1. Environment variable ($CLOUDSDK_CORE_PROJECT, $CLOUDSDK_CORE_ACCOUNT, $CLOUDSDK_COMPUTE_REGION)
-    # 2. Active gcloud configuration (~/.config/gcloud/configurations/config_{name})
-    # 3. Global properties (~/.config/gcloud/properties)
-
-  # ── claude ───────────────────────────────────────
   claude:
     enabled: true
-
-    # When to show Claude Code usage:
-    #   auto   - show when .claude/ or CLAUDE.md exists (in cwd or git root)
-    #   always - always show
-    mode: "auto"
-
-    # Progress bar style:
-    #   block - ▰▱ (default)
-    #   dot   - ●○
-    #   fill  - █░
-    bar_style: "block"
-
-    # Reset time display:
-    #   absolute - "3:00pm", "Mar 19, 2:00pm"
-    #   relative - "22m left", "3h 15m left"
-    time_style: "absolute"
-
-    # API response cache duration in seconds
-    cache_ttl: 120
-
-    # OAuth token resolution order:
-    # 1. $CLAUDE_CODE_OAUTH_TOKEN
-    # 2. macOS Keychain (Claude Code-credentials)
-    # 3. ~/.claude/.credentials.json
-
-    # Show Claude Code project configuration status
-    config_view:
+    mode: "auto"              # always | auto
+    usage:
+      bar_style: "block"      # block (▰▱) | dot (●○) | fill (█░)
+      time_style: "absolute"  # absolute (3:00pm) | relative (22m left)
+      cache_ttl: 120          # cache duration in seconds
+    config:
       enabled: true
-
-      # Display mode:
-      #   auto   - show only existing items with ✓
-      #   always - show all items with ✓/✗
-      mode: "auto"
-
-    # Checked items:
-    # CLAUDE.md, .claude/settings.json, .claude/settings.local.json,
-    # .claude/rules/, .claude/skills/, .claude/agents/,
-    # .claude/commands/, .mcp.json
+      mode: "auto"            # always (show ✓/✗) | auto (show existing only)
 ```
 
 ### Display Formats
@@ -268,10 +193,10 @@ Multiline values (git.status, git.cwd tree, claude.config) are automatically wra
 | Key | Source | Description |
 |-----|--------|-------------|
 | `cwd` | cwd module | Current working directory |
-| `git.url` | `show_repo: true` | Repository HTTPS URL |
-| `git.cwd` | `show_tree: true` | Position in repo (breadcrumb or tree) |
+| `git.url` | `url.enabled: true` | Repository HTTPS URL |
+| `git.cwd` | `cwd.enabled: true` | Position in repo (breadcrumb or tree) |
 | `git.sign` | always (when in repo) | Branch, flags, ahead/behind, operation |
-| `git.status` | `show_status: true` | git status output (short or long) |
+| `git.status` | `status.enabled: true` | git status output (short or long) |
 | `kube.context` | kube module | Kubernetes context (cleaned if `context.clean: true`) |
 | `kube.namespace` | kube module | Kubernetes namespace (defaults to "default") |
 | `kube.cluster` | kube module | Kubernetes cluster name |
@@ -281,7 +206,7 @@ Multiline values (git.status, git.cwd tree, claude.config) are automatically wra
 | `gcp.config` | gcp module | Active gcloud config (hidden if "default") |
 | `claude.usage.5h` | claude module | 5-hour rolling window utilization |
 | `claude.usage.7d` | claude module | 7-day rolling window utilization |
-| `claude.config` | `config_view.enabled: true` | Project config status (CLAUDE.md, rules, skills, etc.) |
+| `claude.config` | `config.enabled: true` | Project config status (CLAUDE.md, rules, skills, etc.) |
 
 ### Themes
 
