@@ -161,6 +161,37 @@ func TestRenderWithRows(t *testing.T) {
 	}
 }
 
+func TestRenderTreeSingleChild(t *testing.T) {
+	cfg := config.Default()
+	cfg.Format = "table"
+	cfg.KeyStyle = "tree"
+	outputs := []*module.Output{
+		{
+			Name:     "gcp",
+			Segments: []module.Segment{module.NewSegment("user@example.com", module.Accent)},
+			Rows: []module.Row{
+				{Key: "gcp.account", Segments: []module.Segment{module.NewSegment("user@example.com", module.Accent)}},
+			},
+		},
+	}
+
+	result := Render(outputs, cfg)
+	// Even with a single child, tree mode should show group header + └──
+	if !strings.Contains(result, "gcp") {
+		t.Error("single child tree should contain group header 'gcp'")
+	}
+	if !strings.Contains(result, "└──") {
+		t.Error("single child tree should contain └── connector")
+	}
+	if !strings.Contains(result, "account") {
+		t.Error("single child tree should contain child key 'account'")
+	}
+	// Should NOT show flat "gcp.account"
+	if strings.Contains(result, "gcp.account") {
+		t.Error("tree mode should not show flat 'gcp.account' for single child")
+	}
+}
+
 func TestRenderWithRowsFlat(t *testing.T) {
 	cfg := config.Default()
 	cfg.Format = "table"

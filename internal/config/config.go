@@ -61,8 +61,9 @@ type KubeConfig struct {
 }
 
 type GcpConfig struct {
-	Enabled bool   `yaml:"enabled"`
-	Symbol  string `yaml:"symbol"`
+	Enabled bool     `yaml:"enabled"`
+	Symbol  string   `yaml:"symbol"`
+	Order   []string `yaml:"order"`
 }
 
 type ClaudeConfig struct {
@@ -305,6 +306,7 @@ modules:
   gcp:
     enabled: false
     # symbol: "☁"
+    # order: [project, account, region, config]  # sub-key display order
 
   claude:
     enabled: true

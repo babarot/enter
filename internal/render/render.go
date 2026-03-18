@@ -214,13 +214,7 @@ func treeifyKeys(entries []struct{ key, value string }) []struct{ key, value str
 		}
 		group := entries[groupStart:i]
 
-		if len(group) == 1 {
-			// Single entry with dot — keep flat
-			result = append(result, group[0])
-			continue
-		}
-
-		// Multiple entries — emit group header + tree children
+		// Emit group header + tree children (even for single child)
 		result = append(result, entry{key: prefix, value: ""})
 		for j, e := range group {
 			child := e.key[dot+1:] // strip prefix + dot

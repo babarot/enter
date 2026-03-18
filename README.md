@@ -175,10 +175,13 @@ modules:
     # Symbol displayed before the project name
     symbol: "☁"
 
-    # Resolution order:
-    # 1. $CLOUDSDK_CORE_PROJECT
-    # 2. ~/.config/gcloud/properties [core] project
-    # 3. ~/.config/gcloud/active_config → config_{name}
+    # Sub-keys: gcp.project, gcp.account, gcp.region, gcp.config
+    # gcp.config only shown when active config is not "default"
+    #
+    # Resolution order (per field):
+    # 1. Environment variable ($CLOUDSDK_CORE_PROJECT, $CLOUDSDK_CORE_ACCOUNT, $CLOUDSDK_COMPUTE_REGION)
+    # 2. Active gcloud configuration (~/.config/gcloud/configurations/config_{name})
+    # 3. Global properties (~/.config/gcloud/properties)
 
   # ── claude ───────────────────────────────────────
   claude:
@@ -267,7 +270,10 @@ Multiline values (git.status, git.cwd tree, claude.config) are automatically wra
 | `kube.context` | kube module | Kubernetes context (cleaned if `clean_context: true`) |
 | `kube.namespace` | kube module | Kubernetes namespace (defaults to "default") |
 | `kube.cluster` | kube module | Kubernetes cluster name |
-| `gcp` | gcp module | GCP project |
+| `gcp.project` | gcp module | GCP project name |
+| `gcp.account` | gcp module | GCP account email |
+| `gcp.region` | gcp module | Compute region |
+| `gcp.config` | gcp module | Active gcloud config (hidden if "default") |
 | `claude.usage.5h` | claude module | 5-hour rolling window utilization |
 | `claude.usage.7d` | claude module | 7-day rolling window utilization |
 | `claude.config` | `config_view.enabled: true` | Project config status (CLAUDE.md, rules, skills, etc.) |
