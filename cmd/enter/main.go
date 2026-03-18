@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync"
 
@@ -22,6 +23,7 @@ func main() {
 	var (
 		initShell  string
 		initConfig bool
+		editConfig bool
 		configPath string
 		format     string
 		theme      string
@@ -31,6 +33,7 @@ func main() {
 
 	flag.StringVar(&initShell, "init-shell", "", "Print shell integration snippet (zsh|bash)")
 	flag.BoolVar(&initConfig, "init-config", false, "Generate default config file")
+	flag.BoolVar(&editConfig, "edit-config", false, "Open config file in $EDITOR")
 	flag.StringVar(&configPath, "config", "", "Path to config file")
 	flag.StringVar(&format, "format", "", "Display format (table|inline)")
 	flag.StringVar(&theme, "theme", "", "Color theme")
@@ -51,6 +54,11 @@ func main() {
 
 	if initConfig {
 		generateConfig()
+		return
+	}
+
+	if editConfig {
+		openConfigInEditor()
 		return
 	}
 
@@ -184,4 +192,27 @@ func generateConfig() {
 	}
 
 	fmt.Printf("Created %s\n", path)
+}
+
+func openConfigInEditor() {
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		fmt.Fprintln(os.Stderr, "$EDITOR is not set")
+		os.Exit(1)
+	}
+
+	path := config.ConfigPath()
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "Config not found: %s\nRun with --init-config first.\n", path)
+		os.Exit(1)
+	}
+
+	cmd := exec.Command(editor, path)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open editor: %v\n", err)
+		os.Exit(1)
+	}
 }
