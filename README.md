@@ -2,18 +2,7 @@
 
 Show contextual info every time you press Enter in your shell.
 
-```
-╭────────────────┬──────────────────────────────────────────╮
-│cwd             │ ~/s/g/babarot/project                    │
-│git.url         │ https://github.com/babarot/project       │
-│git.cwd         │ /                                        │
-│git.sign        │ (main *%)                                │
-│git.status      │ M  internal/modules/git.go               │
-│claude.usage.5h │ ▰▱▱▱▱▱▱▱▱▱  14% ⟳ 3:00pm               │
-│claude.usage.7d │ ▰▱▱▱▱▱▱▱▱▱  14% ⟳ Mar 19, 2:00pm       │
-│claude.config   │ ✓ CLAUDE.md  ✓ rules (3)  ✓ skills (2)  │
-╰────────────────┴──────────────────────────────────────────╯
-```
+![903c105182d8f49a](https://assets.babarot.dev/files/2026/03/903c105182d8f49a.png)
 
 ## Install
 
