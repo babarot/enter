@@ -19,19 +19,27 @@ The traditional answer is to cram this into your shell prompt or tmux statusline
 
 ## Install
 
+**Homebrew**:
+
+```bash
+brew install babarot/tap/enter
+```
+
+**go install**:
+
 ```bash
 go install github.com/babarot/enter/cmd/enter@latest
 ```
 
-Or build from source:
+**Build from source**:
 
 ```bash
 git clone https://github.com/babarot/enter.git
 cd enter
-go build -o enter ./cmd/enter/
+make build
 ```
 
-## Shell Integration
+## Setup
 
 Add to your shell config:
 
@@ -53,7 +61,7 @@ How it works:
 - **zsh**: Uses `bindkey '^m'` with a custom widget + `precmd` hook. The widget sets a flag on empty input, and `precmd` runs `enter` only when the flag is set. This avoids overriding `accept-line` directly, preventing conflicts with other plugins (fzf-tab, etc.).
 - **bash**: Uses `DEBUG` trap + `PROMPT_COMMAND` to detect whether a command was entered.
 
-## CLI Flags
+## Options
 
 ```
 --format <table|inline>           Display format (overrides config)
