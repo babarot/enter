@@ -2,7 +2,7 @@
 
 Press Enter. See where you are.
 
-![](https://assets.babarot.dev/files/2026/03/ed1c76d931bd9f89.png)
+![](https://assets.babarot.dev/files/2026/03/d1decd0fe84a91d1.png)
 
 [![Tests](https://github.com/babarot/enter/actions/workflows/build.yaml/badge.svg)](https://github.com/babarot/enter/actions/workflows/build.yaml)
 [![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/babarot/5f07873547f89c2d2b930848a96e9113/raw/enter-coverage.json)](https://github.com/babarot/enter/actions/workflows/build.yaml)
