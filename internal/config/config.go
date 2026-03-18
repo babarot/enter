@@ -41,6 +41,7 @@ type GitConfig struct {
 	ShowStatus    bool       `yaml:"show_status"`
 	TreeStyle     string     `yaml:"tree_style"`   // "breadcrumb" | "tree"
 	StatusStyle   string     `yaml:"status_style"`  // "short" | "long"
+	Order         []string   `yaml:"order"`
 	Symbols       GitSymbols `yaml:"symbols"`
 }
 
@@ -69,6 +70,7 @@ type ClaudeConfig struct {
 	BarStyle   string            `yaml:"bar_style"`    // "block" | "dot" | "fill"
 	TimeStyle  string            `yaml:"time_style"`   // "absolute" | "relative"
 	CacheTTL   int               `yaml:"cache_ttl"`    // seconds
+	Order      []string          `yaml:"order"`
 	ConfigView ClaudeConfigView  `yaml:"config_view"`
 }
 
@@ -238,6 +240,7 @@ modules:
 
   git:
     enabled: true
+    # order: [url, sign, cwd, status]  # sub-key display order
     show_repo: true         # show repository URL
     show_indicator: true    # show whether in a git repo
     show_tree: true         # show current position in repo
@@ -262,6 +265,7 @@ modules:
 
   claude:
     enabled: true
+    # order: [usage, config]  # sub-key display order
     mode: "auto"            # always | auto
     bar_style: "block"      # block (▰▱) | dot (●○) | fill (█░)
     time_style: "absolute"  # absolute (3:00pm) | relative (22m left)

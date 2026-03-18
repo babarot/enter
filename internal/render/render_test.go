@@ -185,6 +185,85 @@ func TestRenderWithRowsFlat(t *testing.T) {
 	}
 }
 
+func TestReorderRows(t *testing.T) {
+	rows := []module.Row{
+		{Key: "git.url", Segments: []module.Segment{module.NewSegment("url", module.Primary)}},
+		{Key: "git.sign", Segments: []module.Segment{module.NewSegment("sign", module.Success)}},
+		{Key: "git.cwd", Segments: []module.Segment{module.NewSegment("cwd", module.Muted)}},
+		{Key: "git.status", Segments: []module.Segment{module.NewSegment("status", module.Danger)}},
+	}
+
+	// Reverse order
+	reordered := reorderRows(rows, "git", []string{"status", "cwd", "sign", "url"})
+	want := []string{"git.status", "git.cwd", "git.sign", "git.url"}
+	if len(reordered) != len(want) {
+		t.Fatalf("reorderRows length: got %d, want %d", len(reordered), len(want))
+	}
+	for i, key := range want {
+		if reordered[i].Key != key {
+			t.Errorf("reorderRows[%d]: got %q, want %q", i, reordered[i].Key, key)
+		}
+	}
+}
+
+func TestReorderRowsPartial(t *testing.T) {
+	rows := []module.Row{
+		{Key: "git.url", Segments: []module.Segment{module.NewSegment("url", module.Primary)}},
+		{Key: "git.sign", Segments: []module.Segment{module.NewSegment("sign", module.Success)}},
+		{Key: "git.cwd", Segments: []module.Segment{module.NewSegment("cwd", module.Muted)}},
+	}
+
+	// Only specify sign first, rest appended
+	reordered := reorderRows(rows, "git", []string{"sign"})
+	if reordered[0].Key != "git.sign" {
+		t.Errorf("first should be git.sign, got %q", reordered[0].Key)
+	}
+	if len(reordered) != 3 {
+		t.Errorf("all rows should be present, got %d", len(reordered))
+	}
+}
+
+func TestReorderRowsEmpty(t *testing.T) {
+	rows := []module.Row{
+		{Key: "git.url", Segments: []module.Segment{module.NewSegment("url", module.Primary)}},
+		{Key: "git.sign", Segments: []module.Segment{module.NewSegment("sign", module.Success)}},
+	}
+
+	// Empty order should keep original order
+	reordered := reorderRows(rows, "git", []string{})
+	if reordered[0].Key != "git.url" {
+		t.Errorf("empty order should keep original, got %q first", reordered[0].Key)
+	}
+}
+
+func TestRenderWithRowOrder(t *testing.T) {
+	cfg := config.Default()
+	cfg.Format = "table"
+	cfg.KeyStyle = "flat"
+	outputs := []*module.Output{
+		{
+			Name:     "git",
+			Segments: []module.Segment{module.NewSegment("(main)", module.Success)},
+			Rows: []module.Row{
+				{Key: "git.url", Segments: []module.Segment{module.NewSegment("https://example.com", module.Primary)}},
+				{Key: "git.sign", Segments: []module.Segment{module.NewSegment("(main)", module.Success)}},
+			},
+			RowOrder: []string{"sign", "url"},
+		},
+	}
+
+	result := Render(outputs, cfg)
+	// sign should appear before url
+	signIdx := strings.Index(result, "sign")
+	urlIdx := strings.Index(result, "url")
+	if signIdx < 0 || urlIdx < 0 {
+		t.Fatalf("both sign and url should be present, got %q", result)
+	}
+	if signIdx > urlIdx {
+		t.Error("sign should appear before url with RowOrder [sign, url]")
+	}
+}
+
 func TestRenderEmpty(t *testing.T) {
 	cfg := config.Default()
 	result := Render(nil, cfg)

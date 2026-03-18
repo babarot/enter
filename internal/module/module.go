@@ -38,6 +38,7 @@ type Output struct {
 	Name     string
 	Segments []Segment // used for inline format
 	Rows     []Row     // used for table format (optional)
+	RowOrder []string  // optional: reorder rows by sub-key name
 }
 
 type Context struct {

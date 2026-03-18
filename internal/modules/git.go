@@ -163,6 +163,7 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 		Name:     m.Name(),
 		Segments: segments,
 		Rows:     rows,
+		RowOrder: gitCfg.Order,
 	}
 }
 

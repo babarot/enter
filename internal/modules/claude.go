@@ -146,6 +146,7 @@ func (m *ClaudeModule) Run(ctx *module.Context) *module.Output {
 		Name:     m.Name(),
 		Segments: segments,
 		Rows:     rows,
+		RowOrder: cfg.Order,
 	}
 }
 

@@ -55,18 +55,26 @@ func flattenRows(outputs []*module.Output, theme *ThemePalette) []struct{ key, v
 				parentKeys[row.Key] = true
 			}
 
+			// Filter rows (skip children of parent keys)
+			var filtered []module.Row
 			for _, row := range out.Rows {
-				// Skip if a parent key exists (e.g. skip "x.y.z" if "x.y" exists)
 				if dot := strings.LastIndex(row.Key, "."); dot > 0 {
 					parent := row.Key[:dot]
 					if parentKeys[parent] {
 						continue
 					}
 				}
+				filtered = append(filtered, row)
+			}
 
+			// Reorder rows if RowOrder is specified
+			if len(out.RowOrder) > 0 {
+				filtered = reorderRows(filtered, out.Name, out.RowOrder)
+			}
+
+			for _, row := range filtered {
 				value := renderSegments(row.Segments, theme)
 				if value != "" {
-					// Wrap multiline values in a nested box
 					if strings.Contains(value, "\n") {
 						value = boxStyle.Render(value)
 					}
@@ -98,7 +106,14 @@ func renderTable(outputs []*module.Output, cfg *config.Config, theme *ThemePalet
 
 	var rows [][]string
 	for _, e := range entries {
-		label := Paint(e.key, module.Muted, theme)
+		var label string
+		isGroupHeader := e.value == ""
+		isTopLevel := !strings.HasPrefix(e.key, "├") && !strings.HasPrefix(e.key, "└") && !strings.HasPrefix(e.key, "│")
+		if cfg.KeyStyle == "tree" && (isGroupHeader || isTopLevel) {
+			label = PaintBold(e.key, module.Muted, theme)
+		} else {
+			label = Paint(e.key, module.Muted, theme)
+		}
 		rows = append(rows, []string{label, e.value})
 	}
 
@@ -117,6 +132,54 @@ func renderTable(outputs []*module.Output, cfg *config.Config, theme *ThemePalet
 	return t.Render()
 }
 
+
+// reorderRows sorts rows by the given order of sub-key names.
+// prefix is the module name (e.g. "git"), order is sub-key names (e.g. ["sign", "cwd", "url"]).
+// Row keys are like "git.sign", "git.cwd" — we match by stripping the prefix.
+// Rows not in order are appended at the end.
+func reorderRows(rows []module.Row, prefix string, order []string) []module.Row {
+	// Build index: sub-key → position in order
+	pos := make(map[string]int)
+	for i, name := range order {
+		pos[name] = i
+	}
+
+	// Separate into ordered and unordered
+	type indexed struct {
+		row module.Row
+		idx int
+	}
+	var ordered []indexed
+	var rest []module.Row
+
+	for _, row := range rows {
+		subKey := row.Key
+		if dot := strings.Index(row.Key, "."); dot >= 0 {
+			subKey = row.Key[dot+1:]
+		}
+		if i, ok := pos[subKey]; ok {
+			ordered = append(ordered, indexed{row, i})
+		} else {
+			rest = append(rest, row)
+		}
+	}
+
+	// Sort by order index
+	for i := 0; i < len(ordered); i++ {
+		for j := i + 1; j < len(ordered); j++ {
+			if ordered[j].idx < ordered[i].idx {
+				ordered[i], ordered[j] = ordered[j], ordered[i]
+			}
+		}
+	}
+
+	var result []module.Row
+	for _, o := range ordered {
+		result = append(result, o.row)
+	}
+	result = append(result, rest...)
+	return result
+}
 
 // treeifyKeys transforms flat dotted keys into tree-structured display keys.
 // Keys without a dot prefix are kept as-is.
@@ -192,6 +255,15 @@ func renderSegments(segments []module.Segment, theme *ThemePalette) string {
 		buf.WriteString(Paint(seg.Text, seg.Color, theme))
 	}
 	return buf.String()
+}
+
+func PaintBold(text string, color module.SemanticColor, theme *ThemePalette) string {
+	rgb := ColorForSemantic(color, theme)
+	if rgb == nil {
+		return lipgloss.NewStyle().Bold(true).Render(text)
+	}
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color(toHex(*rgb))).Bold(true)
+	return style.Render(text)
 }
 
 func Paint(text string, color module.SemanticColor, theme *ThemePalette) string {
