@@ -22,7 +22,7 @@ func main() {
 		configPath string
 		format     string
 		theme      string
-		lastPwd    string
+		lastDir    string
 		showVer    bool
 	)
 
@@ -31,7 +31,7 @@ func main() {
 	flag.StringVar(&configPath, "config", "", "Path to config file")
 	flag.StringVar(&format, "format", "", "Display format (table|inline)")
 	flag.StringVar(&theme, "theme", "", "Color theme")
-	flag.StringVar(&lastPwd, "last-pwd", "", "Previous working directory (for trigger: on_cd)")
+	flag.StringVar(&lastDir, "last-dir", "", "Previous working directory (for trigger: on_cd)")
 	flag.BoolVar(&showVer, "version", false, "Show version")
 	flag.BoolVar(&showVer, "v", false, "Show version")
 	flag.Parse()
@@ -65,7 +65,7 @@ func main() {
 	cwd, _ := os.Getwd()
 
 	// trigger: on_cd — skip if directory hasn't changed
-	if cfg.Trigger == "on_cd" && lastPwd != "" && lastPwd == cwd {
+	if cfg.Trigger == "on_cd" && lastDir != "" && lastDir == cwd {
 		return
 	}
 
@@ -76,7 +76,7 @@ func main() {
 
 	// Module registry
 	moduleMap := map[string]module.Module{
-		"pwd":    &modules.PwdModule{},
+		"cwd":    &modules.CwdModule{},
 		"git":    &modules.GitModule{},
 		"kube":   &modules.KubeModule{},
 		"gcp":    &modules.GcpModule{},
@@ -121,7 +121,7 @@ func printShellInit(shell string) {
 	switch shell {
 	case "zsh":
 		fmt.Print(`__enter_flag=false
-__enter_last_pwd="$PWD"
+__enter_last_dir="$PWD"
 __enter_widget() {
   if [[ -z "$BUFFER" ]]; then
     __enter_flag=true
@@ -131,8 +131,8 @@ __enter_widget() {
 __enter_precmd() {
   if $__enter_flag; then
     __enter_flag=false
-    enter --last-pwd="$__enter_last_pwd"
-    __enter_last_pwd="$PWD"
+    enter --last-dir="$__enter_last_dir"
+    __enter_last_dir="$PWD"
   fi
 }
 zle -N __enter_widget
@@ -142,12 +142,12 @@ add-zsh-hook precmd __enter_precmd
 `)
 	case "bash":
 		fmt.Print(`__enter_prev_cmd=""
-__enter_last_pwd="$PWD"
+__enter_last_dir="$PWD"
 __enter_preexec() { __enter_prev_cmd="$1"; }
 __enter_precmd() {
   if [[ -z "$__enter_prev_cmd" ]]; then
-    enter --last-pwd="$__enter_last_pwd"
-    __enter_last_pwd="$PWD"
+    enter --last-dir="$__enter_last_dir"
+    __enter_last_dir="$PWD"
   fi
   __enter_prev_cmd=""
 }

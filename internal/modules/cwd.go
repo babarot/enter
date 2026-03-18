@@ -7,17 +7,17 @@ import (
 	"github.com/babarot/enter/internal/module"
 )
 
-type PwdModule struct{}
+type CwdModule struct{}
 
-func (m *PwdModule) Name() string { return "pwd" }
+func (m *CwdModule) Name() string { return "cwd" }
 
-func (m *PwdModule) Run(ctx *module.Context) *module.Output {
-	if !ctx.Config.Modules.Pwd.Enabled {
+func (m *CwdModule) Run(ctx *module.Context) *module.Output {
+	if !ctx.Config.Modules.Cwd.Enabled {
 		return nil
 	}
 
 	home, _ := os.UserHomeDir()
-	display := formatPath(ctx.Cwd, home, ctx.Config.Modules.Pwd.Style)
+	display := formatPath(ctx.Cwd, home, ctx.Config.Modules.Cwd.Style)
 
 	return &module.Output{
 		Name: m.Name(),

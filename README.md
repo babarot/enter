@@ -4,7 +4,7 @@ Show contextual info every time you press Enter in your shell.
 
 ```
 ╭────────────────┬──────────────────────────────────────────╮
-│pwd             │ ~/s/g/babarot/project                    │
+│cwd             │ ~/s/g/babarot/project                    │
 │git.url         │ https://github.com/babarot/project       │
 │git.sign        │ (main *%)                                │
 │git.cwd         │ /                                        │
@@ -57,7 +57,7 @@ How it works:
 --format <table|inline>           Display format (overrides config)
 --theme <name>                    Color theme (overrides config)
 --config <path>                   Path to config file
---last-pwd <path>                 Previous directory (for trigger: on_cd)
+--last-dir <path>                 Previous directory (for trigger: on_cd)
 --init-shell <zsh|bash>           Print shell integration snippet
 --init-config                     Generate default config file
 --version, -v                     Show version
@@ -97,8 +97,8 @@ trigger: "always"
 # Reorder the module sections below to change the display order.
 # Modules not listed here are appended in default order.
 modules:
-  # ── pwd ──────────────────────────────────────────
-  pwd:
+  # ── cwd ──────────────────────────────────────────
+  cwd:
     enabled: true
 
     # Path display style:
@@ -222,7 +222,7 @@ modules:
 
 ```
 ╭────────────────┬──────────────────────────────────────────╮
-│pwd             │ ~/s/g/babarot/project                    │
+│cwd             │ ~/s/g/babarot/project                    │
 │git.url         │ https://github.com/babarot/project       │
 │git.sign        │ (main *%)                                │
 │git.cwd         │ /                                        │
@@ -252,7 +252,7 @@ Multiline values (git.status, git.cwd tree, claude.config) are automatically wra
 
 | Key | Source | Description |
 |-----|--------|-------------|
-| `pwd` | pwd module | Current directory |
+| `cwd` | cwd module | Current working directory |
 | `git.url` | `show_repo: true` | Repository HTTPS URL |
 | `git.sign` | always (when in repo) | Branch, flags, ahead/behind, operation |
 | `git.cwd` | `show_tree: true` | Position in repo (breadcrumb or tree) |
@@ -286,11 +286,11 @@ modules:
     enabled: true
   git:       # ← shown second
     enabled: true
-  pwd:       # ← shown third
+  cwd:       # ← shown third
     enabled: true
 ```
 
-Modules not listed in the config file are appended in default order (`pwd`, `git`, `kube`, `gcp`, `claude`). No separate `order` field is needed.
+Modules not listed in the config file are appended in default order (`cwd`, `git`, `kube`, `gcp`, `claude`). No separate `order` field is needed.
 
 ### Git Symbols
 
@@ -318,7 +318,7 @@ internal/
 │   ├── render.go        Output formatting (table/inline)
 │   └── theme.go         Color themes
 └── modules/
-    ├── pwd.go           Current directory
+    ├── cwd.go           Current working directory
     ├── git.go           Git status, repo URL, tree, status output
     ├── kube.go          Kubernetes context
     ├── gcp.go           GCP project

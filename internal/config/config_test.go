@@ -14,8 +14,8 @@ func TestDefault(t *testing.T) {
 	if cfg.Format != "table" {
 		t.Errorf("format: got %q, want %q", cfg.Format, "table")
 	}
-	if !cfg.Modules.Pwd.Enabled {
-		t.Error("pwd should be enabled by default")
+	if !cfg.Modules.Cwd.Enabled {
+		t.Error("cwd should be enabled by default")
 	}
 	if !cfg.Modules.Git.Enabled {
 		t.Error("git should be enabled by default")
@@ -61,7 +61,7 @@ func TestLoadValidConfig(t *testing.T) {
 theme: "dracula"
 format: "table"
 modules:
-  pwd:
+  cwd:
     enabled: false
     style: "full"
   git:
@@ -81,11 +81,11 @@ modules:
 	if cfg.Format != "table" {
 		t.Errorf("format: got %q, want %q", cfg.Format, "table")
 	}
-	if cfg.Modules.Pwd.Enabled {
-		t.Error("pwd should be disabled")
+	if cfg.Modules.Cwd.Enabled {
+		t.Error("cwd should be disabled")
 	}
-	if cfg.Modules.Pwd.Style != "full" {
-		t.Errorf("pwd style: got %q, want %q", cfg.Modules.Pwd.Style, "full")
+	if cfg.Modules.Cwd.Style != "full" {
+		t.Errorf("cwd style: got %q, want %q", cfg.Modules.Cwd.Style, "full")
 	}
 	if !cfg.Modules.Git.ShowRepo {
 		t.Error("git show_repo should be true")
@@ -118,7 +118,7 @@ func TestGenerateDefault(t *testing.T) {
 		t.Error("GenerateDefault should return non-empty string")
 	}
 	// Should contain key config sections
-	for _, want := range []string{"theme:", "format:", "modules:", "pwd:", "git:", "kube:", "gcp:"} {
+	for _, want := range []string{"theme:", "format:", "modules:", "cwd:", "git:", "kube:", "gcp:"} {
 		if !contains(out, want) {
 			t.Errorf("GenerateDefault should contain %q", want)
 		}
@@ -127,7 +127,7 @@ func TestGenerateDefault(t *testing.T) {
 
 func TestDefaultModuleOrder(t *testing.T) {
 	cfg := Default()
-	want := []string{"pwd", "git", "kube", "gcp", "claude"}
+	want := []string{"cwd", "git", "kube", "gcp", "claude"}
 	if len(cfg.ModuleOrder) != len(want) {
 		t.Fatalf("ModuleOrder length: got %d, want %d", len(cfg.ModuleOrder), len(want))
 	}
@@ -141,21 +141,21 @@ func TestDefaultModuleOrder(t *testing.T) {
 func TestModuleOrderFromConfig(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
-	// claude before git, pwd last
+	// claude before git, cwd last
 	content := `
 modules:
   claude:
     enabled: true
   git:
     enabled: true
-  pwd:
+  cwd:
     enabled: true
 `
 	os.WriteFile(path, []byte(content), 0o644)
 
 	cfg := Load(path)
-	// Should be: claude, git, pwd, then defaults not in config (kube, gcp)
-	want := []string{"claude", "git", "pwd", "kube", "gcp"}
+	// Should be: claude, git, cwd, then defaults not in config (kube, gcp)
+	want := []string{"claude", "git", "cwd", "kube", "gcp"}
 	if len(cfg.ModuleOrder) != len(want) {
 		t.Fatalf("ModuleOrder length: got %d, want %d\norder: %v", len(cfg.ModuleOrder), len(want), cfg.ModuleOrder)
 	}

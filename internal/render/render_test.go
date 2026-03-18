@@ -93,7 +93,7 @@ func TestRenderInline(t *testing.T) {
 	cfg := config.Default()
 	outputs := []*module.Output{
 		{
-			Name:     "pwd",
+			Name:     "cwd",
 			Segments: []module.Segment{module.NewSegment("test/dir", module.Secondary)},
 		},
 		{
@@ -104,7 +104,7 @@ func TestRenderInline(t *testing.T) {
 
 	result := Render(outputs, cfg)
 	if !strings.Contains(result, "test/dir") {
-		t.Error("inline render should contain pwd")
+		t.Error("inline render should contain cwd")
 	}
 	if !strings.Contains(result, "main") {
 		t.Error("inline render should contain git branch")
@@ -116,14 +116,14 @@ func TestRenderTable(t *testing.T) {
 	cfg.Format = "table"
 	outputs := []*module.Output{
 		{
-			Name:     "pwd",
+			Name:     "cwd",
 			Segments: []module.Segment{module.NewSegment("test/dir", module.Secondary)},
 		},
 	}
 
 	result := Render(outputs, cfg)
 	if !strings.Contains(result, "test/dir") {
-		t.Error("table render should contain pwd value")
+		t.Error("table render should contain cwd value")
 	}
 	if !strings.Contains(result, "╭") {
 		t.Error("table render should contain border characters")

@@ -21,14 +21,14 @@ type Config struct {
 }
 
 type ModulesConfig struct {
-	Pwd    PwdConfig    `yaml:"pwd"`
+	Cwd    CwdConfig    `yaml:"cwd"`
 	Git    GitConfig    `yaml:"git"`
 	Kube   KubeConfig   `yaml:"kube"`
 	Gcp    GcpConfig    `yaml:"gcp"`
 	Claude ClaudeConfig `yaml:"claude"`
 }
 
-type PwdConfig struct {
+type CwdConfig struct {
 	Enabled bool   `yaml:"enabled"`
 	Style   string `yaml:"style"`
 }
@@ -77,7 +77,7 @@ type ClaudeConfigView struct {
 	Mode    string `yaml:"mode"` // "always" | "auto"
 }
 
-var DefaultModuleOrder = []string{"pwd", "git", "kube", "gcp", "claude"}
+var DefaultModuleOrder = []string{"cwd", "git", "kube", "gcp", "claude"}
 
 func Default() *Config {
 	return &Config{
@@ -88,7 +88,7 @@ func Default() *Config {
 		KeyStyle:    "tree",
 		ModuleOrder: DefaultModuleOrder,
 		Modules: ModulesConfig{
-			Pwd: PwdConfig{
+			Cwd: CwdConfig{
 				Enabled: true,
 				Style:   "short",
 			},
@@ -232,7 +232,7 @@ trigger: "always"           # always | on_cd
 key_style: "tree"           # flat (git.sign) | tree (├── sign)
 
 modules:
-  pwd:
+  cwd:
     enabled: true
     style: "short"        # parent | full | short | basename
 
