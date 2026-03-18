@@ -91,6 +91,7 @@ func TestDim(t *testing.T) {
 
 func TestRenderInline(t *testing.T) {
 	cfg := config.Default()
+	cfg.Format = "inline"
 	outputs := []*module.Output{
 		{
 			Name:     "cwd",
@@ -108,6 +109,26 @@ func TestRenderInline(t *testing.T) {
 	}
 	if !strings.Contains(result, "main") {
 		t.Error("inline render should contain git branch")
+	}
+	// Should NOT contain table borders
+	if strings.Contains(result, "╭") || strings.Contains(result, "╰") {
+		t.Error("inline render should not contain table borders")
+	}
+}
+
+func TestRenderInlineSingle(t *testing.T) {
+	cfg := config.Default()
+	cfg.Format = "inline"
+	outputs := []*module.Output{
+		{
+			Name:     "cwd",
+			Segments: []module.Segment{module.NewSegment("~/projects", module.Secondary)},
+		},
+	}
+
+	result := Render(outputs, cfg)
+	if !strings.Contains(result, "~/projects") {
+		t.Error("inline render should contain cwd path")
 	}
 }
 

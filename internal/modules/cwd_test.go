@@ -1,6 +1,67 @@
 package modules
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/babarot/enter/internal/config"
+	"github.com/babarot/enter/internal/module"
+)
+
+func TestCwdModuleName(t *testing.T) {
+	m := &CwdModule{}
+	if m.Name() != "cwd" {
+		t.Errorf("Name() = %q, want %q", m.Name(), "cwd")
+	}
+}
+
+func TestCwdModuleEnabled(t *testing.T) {
+	m := &CwdModule{}
+	cfg := config.Default()
+	ctx := &module.Context{Cwd: "/tmp", Config: cfg}
+
+	out := m.Run(ctx)
+	if out == nil {
+		t.Fatal("cwd module should return output")
+	}
+	if out.Name != "cwd" {
+		t.Errorf("Name: got %q, want %q", out.Name, "cwd")
+	}
+	if len(out.Segments) == 0 {
+		t.Error("should have segments")
+	}
+}
+
+func TestCwdModuleDisabled(t *testing.T) {
+	m := &CwdModule{}
+	cfg := config.Default()
+	cfg.Modules.Cwd.Enabled = false
+	ctx := &module.Context{Cwd: "/tmp", Config: cfg}
+
+	out := m.Run(ctx)
+	if out != nil {
+		t.Error("disabled cwd module should return nil")
+	}
+}
+
+func TestCwdModuleStyles(t *testing.T) {
+	m := &CwdModule{}
+
+	styles := []string{"short", "parent", "full", "basename"}
+	for _, style := range styles {
+		cfg := config.Default()
+		cfg.Modules.Cwd.Style = style
+		ctx := &module.Context{Cwd: "/tmp/test/dir", Config: cfg}
+
+		out := m.Run(ctx)
+		if out == nil {
+			t.Errorf("style %q: should return output", style)
+			continue
+		}
+		if len(out.Segments) == 0 {
+			t.Errorf("style %q: should have segments", style)
+		}
+	}
+}
 
 func TestFormatPath(t *testing.T) {
 	home := "/Users/test"

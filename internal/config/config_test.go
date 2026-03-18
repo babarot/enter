@@ -215,6 +215,106 @@ func TestExtractModuleOrderInvalidYAML(t *testing.T) {
 	}
 }
 
+func TestValidate(t *testing.T) {
+	cfg := Default()
+
+	// Set invalid values
+	cfg.Format = "invalid"
+	cfg.Trigger = "invalid"
+	cfg.KeyStyle = "invalid"
+	cfg.Modules.Git.Cwd.Style = "invalid"
+	cfg.Modules.Git.Status.Style = "invalid"
+	cfg.Modules.Claude.Mode = "invalid"
+	cfg.Modules.Claude.Usage.BarStyle = "invalid"
+	cfg.Modules.Claude.Usage.TimeStyle = "invalid"
+	cfg.Modules.Claude.Usage.CacheTTL = -1
+
+	cfg.validate()
+
+	d := Default()
+	if cfg.Format != d.Format {
+		t.Errorf("format: got %q, want %q", cfg.Format, d.Format)
+	}
+	if cfg.Trigger != d.Trigger {
+		t.Errorf("trigger: got %q, want %q", cfg.Trigger, d.Trigger)
+	}
+	if cfg.KeyStyle != d.KeyStyle {
+		t.Errorf("key_style: got %q, want %q", cfg.KeyStyle, d.KeyStyle)
+	}
+	if cfg.Modules.Git.Cwd.Style != d.Modules.Git.Cwd.Style {
+		t.Errorf("git.cwd.style: got %q, want %q", cfg.Modules.Git.Cwd.Style, d.Modules.Git.Cwd.Style)
+	}
+	if cfg.Modules.Git.Status.Style != d.Modules.Git.Status.Style {
+		t.Errorf("git.status.style: got %q, want %q", cfg.Modules.Git.Status.Style, d.Modules.Git.Status.Style)
+	}
+	if cfg.Modules.Claude.Mode != d.Modules.Claude.Mode {
+		t.Errorf("claude.mode: got %q, want %q", cfg.Modules.Claude.Mode, d.Modules.Claude.Mode)
+	}
+	if cfg.Modules.Claude.Usage.BarStyle != d.Modules.Claude.Usage.BarStyle {
+		t.Errorf("claude.usage.bar_style: got %q, want %q", cfg.Modules.Claude.Usage.BarStyle, d.Modules.Claude.Usage.BarStyle)
+	}
+	if cfg.Modules.Claude.Usage.TimeStyle != d.Modules.Claude.Usage.TimeStyle {
+		t.Errorf("claude.usage.time_style: got %q, want %q", cfg.Modules.Claude.Usage.TimeStyle, d.Modules.Claude.Usage.TimeStyle)
+	}
+	if cfg.Modules.Claude.Usage.CacheTTL != d.Modules.Claude.Usage.CacheTTL {
+		t.Errorf("claude.usage.cache_ttl: got %d, want %d", cfg.Modules.Claude.Usage.CacheTTL, d.Modules.Claude.Usage.CacheTTL)
+	}
+}
+
+func TestValidateValidValues(t *testing.T) {
+	cfg := Default()
+	cfg.Format = "inline"
+	cfg.Trigger = "on_cd"
+	cfg.KeyStyle = "flat"
+	cfg.Modules.Git.Cwd.Style = "breadcrumb"
+	cfg.Modules.Git.Status.Style = "long"
+	cfg.Modules.Claude.Mode = "always"
+	cfg.Modules.Claude.Usage.BarStyle = "dot"
+	cfg.Modules.Claude.Usage.TimeStyle = "relative"
+	cfg.Modules.Claude.Usage.CacheTTL = 60
+
+	cfg.validate()
+
+	// All should remain as set
+	if cfg.Format != "inline" {
+		t.Errorf("format should stay inline, got %q", cfg.Format)
+	}
+	if cfg.Modules.Claude.Usage.BarStyle != "dot" {
+		t.Errorf("bar_style should stay dot, got %q", cfg.Modules.Claude.Usage.BarStyle)
+	}
+}
+
+func TestExtractSubKeyOrder(t *testing.T) {
+	content := `
+modules:
+  git:
+    status:
+      enabled: true
+    sign:
+      symbols: {}
+    url:
+      enabled: true
+`
+	_, subKeyOrder := extractOrder([]byte(content))
+	if subKeyOrder == nil {
+		t.Fatal("subKeyOrder should not be nil")
+	}
+	gitOrder, ok := subKeyOrder["git"]
+	if !ok {
+		t.Fatal("should have git sub-key order")
+	}
+	// Should be: status, sign, url
+	want := []string{"status", "sign", "url"}
+	if len(gitOrder) != len(want) {
+		t.Fatalf("git sub-key order length: got %d, want %d (%v)", len(gitOrder), len(want), gitOrder)
+	}
+	for i, name := range want {
+		if gitOrder[i] != name {
+			t.Errorf("git sub-key order[%d]: got %q, want %q", i, gitOrder[i], name)
+		}
+	}
+}
+
 func contains(s, sub string) bool {
 	return len(s) >= len(sub) && (s == sub || len(s) > 0 && containsStr(s, sub))
 }

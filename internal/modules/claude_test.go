@@ -201,6 +201,112 @@ func TestClaudeModuleName(t *testing.T) {
 	}
 }
 
+func TestExtractToken(t *testing.T) {
+	tests := []struct {
+		name, input, want string
+	}{
+		{"valid", `{"claudeAiOauth":{"accessToken":"sk-123"}}`, "sk-123"},
+		{"null token", `{"claudeAiOauth":{"accessToken":"null"}}`, ""},
+		{"empty token", `{"claudeAiOauth":{"accessToken":""}}`, ""},
+		{"invalid json", `{invalid`, ""},
+		{"missing field", `{"other":"value"}`, ""},
+	}
+	for _, tt := range tests {
+		got := extractToken([]byte(tt.input))
+		if got != tt.want {
+			t.Errorf("%s: extractToken() = %q, want %q", tt.name, got, tt.want)
+		}
+	}
+}
+
+func TestGetOAuthTokenFromEnv(t *testing.T) {
+	t.Setenv("CLAUDE_CODE_OAUTH_TOKEN", "env-token-123")
+	got := getOAuthToken()
+	if got != "env-token-123" {
+		t.Errorf("getOAuthToken() = %q, want %q", got, "env-token-123")
+	}
+}
+
+func TestGetOAuthTokenEmpty(t *testing.T) {
+	t.Setenv("CLAUDE_CODE_OAUTH_TOKEN", "")
+	// Without keychain or credentials file, should return empty
+	// (keychain will fail in test env, credentials file won't exist)
+	// Just verify it doesn't panic
+	_ = getOAuthToken()
+}
+
+func TestBuildWindowRow(t *testing.T) {
+	window := &usageWindow{Utilization: 42.0, ResetsAt: "2026-03-19T15:00:00Z"}
+	segs, row := buildWindowRow("claude.usage.5h", "current", "time", window, 10, "block", "absolute")
+
+	if len(segs) == 0 {
+		t.Error("buildWindowRow should return inline segments")
+	}
+	if row.Key != "claude.usage.5h" {
+		t.Errorf("row key: got %q, want %q", row.Key, "claude.usage.5h")
+	}
+	text := segmentsText(segs)
+	if !strings.Contains(text, "42%") {
+		t.Errorf("inline should contain 42%%, got %q", text)
+	}
+	if !strings.Contains(text, "current") {
+		t.Errorf("inline should contain label, got %q", text)
+	}
+}
+
+func TestBuildConfigOutput(t *testing.T) {
+	dir := t.TempDir()
+
+	// Empty dir
+	segs, row := buildConfigOutput(dir, "auto")
+	if segs != nil || row != nil {
+		t.Error("empty dir should return nil")
+	}
+
+	// With CLAUDE.md
+	os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte("# test"), 0o644)
+	segs, row = buildConfigOutput(dir, "auto")
+	if segs == nil || row == nil {
+		t.Fatal("dir with CLAUDE.md should return output")
+	}
+	if row.Key != "claude.config" {
+		t.Errorf("row key: got %q, want %q", row.Key, "claude.config")
+	}
+}
+
+func TestClaudeModuleAlwaysMode(t *testing.T) {
+	m := &ClaudeModule{}
+	cfg := config.Default()
+	cfg.Modules.Claude.Mode = "always"
+	// Disable config view to simplify
+	cfg.Modules.Claude.Config.Enabled = false
+	ctx := &module.Context{Cwd: t.TempDir(), Config: cfg}
+
+	// In always mode, Run should not return nil just because of missing .claude
+	// (it will return nil only if usage API fails, which it will in test)
+	out := m.Run(ctx)
+	// Usage API will fail in test env, but config view is disabled
+	// so nil is expected — just verify no panic
+	_ = out
+}
+
+func TestDetectClaudeProjectGitRoot(t *testing.T) {
+	dir := initTestRepo(t)
+	subdir := filepath.Join(dir, "sub")
+	os.MkdirAll(subdir, 0o755)
+
+	// No claude files anywhere
+	if detectClaudeProject(subdir) {
+		t.Error("should not detect without .claude")
+	}
+
+	// Add CLAUDE.md at git root
+	os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte("# test"), 0o644)
+	if !detectClaudeProject(subdir) {
+		t.Error("should detect CLAUDE.md at git root from subdir")
+	}
+}
+
 func TestCheckFile(t *testing.T) {
 	dir := t.TempDir()
 

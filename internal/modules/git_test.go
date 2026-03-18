@@ -440,6 +440,62 @@ func TestDetectOperation(t *testing.T) {
 	}
 }
 
+func TestGetGitStatusLong(t *testing.T) {
+	dir := initTestRepo(t)
+	os.WriteFile(filepath.Join(dir, "new.txt"), []byte("new"), 0o644)
+
+	segs := getGitStatusLong(dir)
+	if len(segs) == 0 {
+		t.Fatal("getGitStatusLong should return segments")
+	}
+	text := segmentsText(segs)
+	if !strings.Contains(text, "Untracked files") {
+		t.Errorf("long status should contain 'Untracked files', got %q", text)
+	}
+	if !strings.Contains(text, "new.txt") {
+		t.Errorf("long status should contain 'new.txt', got %q", text)
+	}
+}
+
+func TestGetGitStatusShort(t *testing.T) {
+	dir := initTestRepo(t)
+	os.WriteFile(filepath.Join(dir, "new.txt"), []byte("new"), 0o644)
+
+	segs := getGitStatusShort(dir)
+	if len(segs) == 0 {
+		t.Fatal("getGitStatusShort should return segments")
+	}
+	text := segmentsText(segs)
+	if !strings.Contains(text, "new.txt") {
+		t.Errorf("short status should contain 'new.txt', got %q", text)
+	}
+}
+
+func TestGetGitStatusClean(t *testing.T) {
+	dir := initTestRepo(t)
+
+	segs := getGitStatusShort(dir)
+	if len(segs) != 0 {
+		t.Error("clean repo short should return no segments")
+	}
+}
+
+func TestFormatOperation(t *testing.T) {
+	tests := []struct {
+		op, step, total, want string
+	}{
+		{"REBASE", "2", "5", "REBASE 2/5"},
+		{"REBASE", "", "", "REBASE"},
+		{"AM", "1", "3", "AM 1/3"},
+	}
+	for _, tt := range tests {
+		got := formatOperation(tt.op, tt.step, tt.total)
+		if got != tt.want {
+			t.Errorf("formatOperation(%q, %q, %q) = %q, want %q", tt.op, tt.step, tt.total, got, tt.want)
+		}
+	}
+}
+
 func segmentsText(segs []module.Segment) string {
 	var b strings.Builder
 	for _, s := range segs {
