@@ -161,13 +161,25 @@ func treeifyKeys(entries []struct{ key, value string }) []struct{ key, value str
 		result = append(result, entry{key: prefix, value: ""})
 		for j, e := range group {
 			child := e.key[dot+1:] // strip prefix + dot
-			var connector string
-			if j == len(group)-1 {
+			isLast := j == len(group)-1
+			var connector, continuation string
+			if isLast {
 				connector = "└── "
+				continuation = "    "
 			} else {
 				connector = "├── "
+				continuation = "│   "
 			}
-			result = append(result, entry{key: connector + child, value: e.value})
+
+			// If value is multiline, pad the key column with continuation lines
+			// so the tree connector doesn't break visually
+			valueLines := strings.Count(e.value, "\n")
+			key := connector + child
+			for k := 0; k < valueLines; k++ {
+				key += "\n" + continuation
+			}
+
+			result = append(result, entry{key: key, value: e.value})
 		}
 	}
 
