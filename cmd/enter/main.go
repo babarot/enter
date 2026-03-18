@@ -203,8 +203,16 @@ func openConfigInEditor() {
 
 	path := config.ConfigPath()
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		fmt.Fprintf(os.Stderr, "Config not found: %s\nRun with --init-config first.\n", path)
-		os.Exit(1)
+		dir := filepath.Dir(path)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to create directory: %v\n", err)
+			os.Exit(1)
+		}
+		if err := os.WriteFile(path, []byte(config.GenerateDefault()), 0o644); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to write config: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Fprintf(os.Stderr, "Created %s\n", path)
 	}
 
 	cmd := exec.Command(editor, path)
