@@ -51,6 +51,12 @@ const (
 	ClaudeModeAlways = "always"
 )
 
+// CodexMode
+const (
+	CodexModeAuto   = "auto"
+	CodexModeAlways = "always"
+)
+
 // BarStyle
 const (
 	BarStyleBlock = "block"
@@ -71,6 +77,7 @@ const (
 	ModuleKube   = "kube"
 	ModuleGcp    = "gcp"
 	ModuleClaude = "claude"
+	ModuleCodex  = "codex"
 )
 
 // Theme
@@ -97,6 +104,7 @@ type ModulesConfig struct {
 	Kube   KubeConfig   `yaml:"kube"`
 	Gcp    GcpConfig    `yaml:"gcp"`
 	Claude ClaudeConfig `yaml:"claude"`
+	Codex  CodexConfig  `yaml:"codex"`
 }
 
 type CwdConfig struct {
@@ -171,7 +179,18 @@ type ClaudeConfigView struct {
 	Mode    string `yaml:"mode"` // "always" | "auto"
 }
 
-var DefaultModuleOrder = []string{ModuleCwd, ModuleGit, ModuleKube, ModuleGcp, ModuleClaude}
+type CodexConfig struct {
+	Enabled bool            `yaml:"enabled"`
+	Mode    string          `yaml:"mode"` // "always" | "auto"
+	Config  CodexConfigView `yaml:"config"`
+}
+
+type CodexConfigView struct {
+	Enabled bool   `yaml:"enabled"`
+	Mode    string `yaml:"mode"` // "always" | "auto"
+}
+
+var DefaultModuleOrder = []string{ModuleCwd, ModuleGit, ModuleKube, ModuleGcp, ModuleClaude, ModuleCodex}
 
 func Default() *Config {
 	return &Config{
@@ -212,6 +231,14 @@ func Default() *Config {
 				Config: ClaudeConfigView{
 					Enabled: true,
 					Mode:    ClaudeModeAuto,
+				},
+			},
+			Codex: CodexConfig{
+				Enabled: true,
+				Mode:    CodexModeAuto,
+				Config: CodexConfigView{
+					Enabled: true,
+					Mode:    CodexModeAuto,
 				},
 			},
 		},
@@ -320,6 +347,11 @@ func (c *Config) validate() {
 	if usage.CacheTTL <= 0 {
 		usage.CacheTTL = d.Modules.Claude.Usage.CacheTTL
 	}
+
+	cx := &c.Modules.Codex
+	if cx.Mode != CodexModeAlways && cx.Mode != CodexModeAuto {
+		cx.Mode = d.Modules.Codex.Mode
+	}
 }
 
 // extractOrder parses the YAML with goccy/go-yaml MapSlice
@@ -425,6 +457,13 @@ modules:
       bar_style: "block"    # block (▰▱) | dot (●○) | fill (█░)
       time_style: "absolute" # absolute (3:00pm) | relative (22m left)
       cache_ttl: 120        # cache duration in seconds
+    config:
+      enabled: true
+      mode: "auto"          # always (show ✓/✗) | auto (show existing only)
+
+  codex:
+    enabled: true
+    mode: "auto"            # always | auto
     config:
       enabled: true
       mode: "auto"          # always (show ✓/✗) | auto (show existing only)

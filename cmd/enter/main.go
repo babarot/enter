@@ -84,6 +84,7 @@ func main() {
 		config.ModuleKube:   &modules.KubeModule{},
 		config.ModuleGcp:    &modules.GcpModule{},
 		config.ModuleClaude: &modules.ClaudeModule{},
+		config.ModuleCodex:  &modules.CodexModule{},
 	}
 
 	// Order modules based on config

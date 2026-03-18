@@ -9,14 +9,14 @@ Press Enter. See where you are.
 
 ## Why
 
-We deal with more context than ever. Git branch, Kubernetes cluster, GCP project, Claude Code usage — all things you need to be aware of, and all things that change depending on where you are.
+We deal with more context than ever. Git branch, Kubernetes cluster, GCP project, Claude Code usage, Codex CLI config — all things you need to be aware of, and all things that change depending on where you are.
 
 The traditional answer is to cram this into your shell prompt or tmux statusline. But that approach doesn't scale: the prompt gets long, the statusline gets crowded, and neither adapts well to what actually matters in each directory.
 
 **enter** takes a different approach. Instead of displaying context *all the time*, it shows it **on demand** — when you press Enter on an empty command line. It detects the current directory, figures out what's relevant (git repo? Claude Code project? Kubernetes context?), and displays a clean, structured summary. Nothing clutters your prompt. Nothing runs on every command. Just press Enter when you need to know.
 
-- **Directory-aware**: Only shows what's relevant. Git info appears in repos, Claude usage appears in Claude projects, kube context appears when configured.
-- **Pluggable**: Each info source (git, kube, gcp, claude) is an independent module. Enable what you need.
+- **Directory-aware**: Only shows what's relevant. Git info appears in repos, Claude usage appears in Claude projects, Codex config appears in Codex projects, kube context appears when configured.
+- **Pluggable**: Each info source (git, kube, gcp, claude, codex) is an independent module. Enable what you need.
 - **Configurable display**: Table or inline format. Tree-style keys. Themes. Symbol customization. All via a single YAML file.
 - **Fast**: All modules run in parallel. The display order follows your config file — no extra `order` fields needed.
 
@@ -157,6 +157,13 @@ modules:
     config:
       enabled: true
       mode: "auto"            # always (show ✓/✗) | auto (show existing only)
+
+  codex:
+    enabled: true
+    mode: "auto"              # always | auto
+    config:
+      enabled: true
+      mode: "auto"            # always (show ✓/✗) | auto (show existing only)
 ```
 
 ### Table Row Keys
@@ -178,6 +185,7 @@ modules:
 | `claude.usage.5h` | claude module | 5-hour rolling window utilization |
 | `claude.usage.7d` | claude module | 7-day rolling window utilization |
 | `claude.config` | `config.enabled: true` | Project config status (CLAUDE.md, rules, skills, etc.) |
+| `codex.config` | `config.enabled: true` | Project config status (AGENTS.md, config.toml, etc.) |
 
 ### Themes
 
@@ -206,7 +214,7 @@ modules:
     enabled: true
 ```
 
-Modules not listed in the config file are appended in default order (`cwd`, `git`, `kube`, `gcp`, `claude`).
+Modules not listed in the config file are appended in default order (`cwd`, `git`, `kube`, `gcp`, `claude`, `codex`).
 
 Sub-keys within a module are also ordered by their position in the config file. Simply reorder the sections:
 

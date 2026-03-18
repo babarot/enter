@@ -129,7 +129,7 @@ func TestGenerateDefault(t *testing.T) {
 
 func TestDefaultModuleOrder(t *testing.T) {
 	cfg := Default()
-	want := []string{"cwd", "git", "kube", "gcp", "claude"}
+	want := []string{"cwd", "git", "kube", "gcp", "claude", "codex"}
 	if len(cfg.ModuleOrder) != len(want) {
 		t.Fatalf("ModuleOrder length: got %d, want %d", len(cfg.ModuleOrder), len(want))
 	}
@@ -156,8 +156,8 @@ modules:
 	os.WriteFile(path, []byte(content), 0o644)
 
 	cfg := Load(path)
-	// Should be: claude, git, cwd, then defaults not in config (kube, gcp)
-	want := []string{"claude", "git", "cwd", "kube", "gcp"}
+	// Should be: claude, git, cwd, then defaults not in config (kube, gcp, codex)
+	want := []string{"claude", "git", "cwd", "kube", "gcp", "codex"}
 	if len(cfg.ModuleOrder) != len(want) {
 		t.Fatalf("ModuleOrder length: got %d, want %d\norder: %v", len(cfg.ModuleOrder), len(want), cfg.ModuleOrder)
 	}
