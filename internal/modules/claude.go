@@ -152,16 +152,11 @@ func (m *ClaudeModule) Run(ctx *module.Context) *module.Output {
 
 // detectClaudeProject checks if cwd (or git root) contains .claude/ or CLAUDE.md
 func detectClaudeProject(cwd string) bool {
-	// Check cwd
 	if hasClaudeFiles(cwd) {
 		return true
 	}
 
-	// Check git root
-	cmd := exec.Command("git", "-C", cwd, "rev-parse", "--show-toplevel")
-	out, err := cmd.Output()
-	if err == nil {
-		root := strings.TrimSpace(string(out))
+	if root, ok := execGit(cwd, "rev-parse", "--show-toplevel"); ok {
 		if root != cwd && hasClaudeFiles(root) {
 			return true
 		}
@@ -361,6 +356,23 @@ func checkDir(root, rel string) configItem {
 
 // --- OAuth token resolution ---
 
+type claudeCredentials struct {
+	ClaudeAiOauth struct {
+		AccessToken string `json:"accessToken"`
+	} `json:"claudeAiOauth"`
+}
+
+func extractToken(data []byte) string {
+	var creds claudeCredentials
+	if json.Unmarshal(data, &creds) == nil {
+		token := creds.ClaudeAiOauth.AccessToken
+		if token != "" && token != "null" {
+			return token
+		}
+	}
+	return ""
+}
+
 func getOAuthToken() string {
 	// 1. Environment variable
 	if token := os.Getenv("CLAUDE_CODE_OAUTH_TOKEN"); token != "" {
@@ -368,30 +380,17 @@ func getOAuthToken() string {
 	}
 
 	// 2. macOS Keychain
-	out, err := exec.Command("security", "find-generic-password", "-s", "Claude Code-credentials", "-w").Output()
-	if err == nil {
-		var creds struct {
-			ClaudeAiOauth struct {
-				AccessToken string `json:"accessToken"`
-			} `json:"claudeAiOauth"`
-		}
-		if json.Unmarshal(out, &creds) == nil && creds.ClaudeAiOauth.AccessToken != "" && creds.ClaudeAiOauth.AccessToken != "null" {
-			return creds.ClaudeAiOauth.AccessToken
+	if out, err := exec.Command("security", "find-generic-password", "-s", "Claude Code-credentials", "-w").Output(); err == nil {
+		if token := extractToken(out); token != "" {
+			return token
 		}
 	}
 
 	// 3. Credentials file
-	home, _ := os.UserHomeDir()
-	if home != "" {
-		data, err := os.ReadFile(filepath.Join(home, ".claude", ".credentials.json"))
-		if err == nil {
-			var creds struct {
-				ClaudeAiOauth struct {
-					AccessToken string `json:"accessToken"`
-				} `json:"claudeAiOauth"`
-			}
-			if json.Unmarshal(data, &creds) == nil && creds.ClaudeAiOauth.AccessToken != "" && creds.ClaudeAiOauth.AccessToken != "null" {
-				return creds.ClaudeAiOauth.AccessToken
+	if home, _ := os.UserHomeDir(); home != "" {
+		if data, err := os.ReadFile(filepath.Join(home, ".claude", ".credentials.json")); err == nil {
+			if token := extractToken(data); token != "" {
+				return token
 			}
 		}
 	}
