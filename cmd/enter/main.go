@@ -13,7 +13,10 @@ import (
 	"github.com/babarot/enter/internal/render"
 )
 
-var version = "0.1.0"
+var (
+	version  = "dev"
+	revision = "HEAD"
+)
 
 func main() {
 	var (
@@ -37,7 +40,7 @@ func main() {
 	flag.Parse()
 
 	if showVer {
-		fmt.Printf("enter %s\n", version)
+		fmt.Printf("enter %s (%s)\n", version, revision)
 		return
 	}
 
