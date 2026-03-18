@@ -6,8 +6,8 @@ Show contextual info every time you press Enter in your shell.
 ╭────────────────┬──────────────────────────────────────────╮
 │cwd             │ ~/s/g/babarot/project                    │
 │git.url         │ https://github.com/babarot/project       │
-│git.sign        │ (main *%)                                │
 │git.cwd         │ /                                        │
+│git.sign        │ (main *%)                                │
 │git.status      │ M  internal/modules/git.go               │
 │claude.usage.5h │ ▰▱▱▱▱▱▱▱▱▱  14% ⟳ 3:00pm               │
 │claude.usage.7d │ ▰▱▱▱▱▱▱▱▱▱  14% ⟳ Mar 19, 2:00pm       │
@@ -224,8 +224,8 @@ modules:
 ╭────────────────┬──────────────────────────────────────────╮
 │cwd             │ ~/s/g/babarot/project                    │
 │git.url         │ https://github.com/babarot/project       │
-│git.sign        │ (main *%)                                │
 │git.cwd         │ /                                        │
+│git.sign        │ (main *%)                                │
 │git.status      │ ╭──────────────────────────╮             │
 │                │ │ M  internal/modules/git.go│             │
 │                │ ╰──────────────────────────╯             │
@@ -254,8 +254,8 @@ Multiline values (git.status, git.cwd tree, claude.config) are automatically wra
 |-----|--------|-------------|
 | `cwd` | cwd module | Current working directory |
 | `git.url` | `show_repo: true` | Repository HTTPS URL |
-| `git.sign` | always (when in repo) | Branch, flags, ahead/behind, operation |
 | `git.cwd` | `show_tree: true` | Position in repo (breadcrumb or tree) |
+| `git.sign` | always (when in repo) | Branch, flags, ahead/behind, operation |
 | `git.status` | `show_status: true` | git status output (short or long) |
 | `kube` | kube module | Kubernetes current-context |
 | `gcp` | gcp module | GCP project |
@@ -297,7 +297,7 @@ Sub-keys within a module (e.g. `git.url`, `git.sign`) can be reordered with the 
 ```yaml
 modules:
   git:
-    order: [sign, cwd, url, status]  # default: [url, sign, cwd, status]
+    order: [sign, cwd, url, status]  # default: [url, cwd, sign, status]
   claude:
     order: [config, usage]           # default: [usage, config]
 ```

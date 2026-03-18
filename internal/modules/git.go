@@ -139,16 +139,16 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 			Segments: []module.Segment{module.NewSegment(info.repoURL, module.Primary)},
 		})
 	}
-	rows = append(rows, module.Row{
-		Key:      "git.sign",
-		Segments: statusSegs,
-	})
 	if gitCfg.ShowTree {
 		rows = append(rows, module.Row{
 			Key:      "git.cwd",
 			Segments: cwdSegs,
 		})
 	}
+	rows = append(rows, module.Row{
+		Key:      "git.sign",
+		Segments: statusSegs,
+	})
 	if gitCfg.ShowStatus {
 		statusSegs := getGitStatusSegments(ctx.Cwd, gitCfg.StatusStyle)
 		if len(statusSegs) > 0 {

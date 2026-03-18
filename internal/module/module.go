@@ -46,6 +46,8 @@ type Context struct {
 	Config *config.Config
 }
 
+// Module is the interface that all pluggable modules implement.
+// Run returns nil if the module is disabled or has nothing to display.
 type Module interface {
 	Name() string
 	Run(ctx *Context) *Output

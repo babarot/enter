@@ -278,7 +278,7 @@ modules:
 
   git:
     enabled: true
-    # order: [url, sign, cwd, status]  # sub-key display order
+    # order: [url, cwd, sign, status]  # sub-key display order
     show_repo: true         # show repository URL
     show_indicator: true    # show whether in a git repo
     show_tree: true         # show current position in repo
