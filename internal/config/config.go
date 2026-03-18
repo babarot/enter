@@ -69,14 +69,16 @@ type GitSymbols struct {
 }
 
 type KubeConfig struct {
-	Enabled      bool     `yaml:"enabled"`
-	CleanContext bool     `yaml:"clean_context"` // strip cloud provider prefixes from context name
-	Order        []string `yaml:"order"`
+	Enabled bool              `yaml:"enabled"`
+	Context KubeContextConfig `yaml:"context"`
+}
+
+type KubeContextConfig struct {
+	Clean bool `yaml:"clean"` // strip cloud provider prefixes (GKE/EKS/AKS)
 }
 
 type GcpConfig struct {
-	Enabled bool     `yaml:"enabled"`
-	Order   []string `yaml:"order"`
+	Enabled bool `yaml:"enabled"`
 }
 
 type ClaudeConfig struct {
@@ -121,8 +123,8 @@ func Default() *Config {
 				Status:    GitStatusConfig{Enabled: true, Style: "short"},
 			},
 			Kube: KubeConfig{
-				Enabled:      false,
-				CleanContext: true,
+				Enabled: false,
+				Context: KubeContextConfig{Clean: true},
 			},
 			Gcp: GcpConfig{
 				Enabled: false,
@@ -320,11 +322,11 @@ modules:
 
   kube:
     enabled: false
-    clean_context: true     # strip cloud provider prefixes (GKE/EKS/AKS)
+    context:
+      clean: true           # strip cloud provider prefixes (GKE/EKS/AKS)
 
   gcp:
     enabled: false
-    # order: [project, account, region, config]  # sub-key display order
 
   claude:
     enabled: true

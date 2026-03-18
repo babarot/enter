@@ -72,7 +72,6 @@ func (m *GcpModule) Run(ctx *module.Context) *module.Output {
 		Name:     m.Name(),
 		Segments: segments,
 		Rows:     rows,
-		RowOrder: ctx.Config.Modules.Gcp.Order,
 	}
 }
 

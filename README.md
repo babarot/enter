@@ -155,11 +155,12 @@ modules:
   kube:
     enabled: false
 
-    # Strip cloud provider prefixes from context name
-    # GKE: gke_project_region_cluster → project/cluster
-    # EKS: arn:aws:eks:region:account:cluster/name → name
-    # AKS: aks_project_region_cluster → project/cluster
-    clean_context: true
+    context:
+      # Strip cloud provider prefixes from context name
+      # GKE: gke_project_region_cluster → project/cluster
+      # EKS: arn:aws:eks:region:account:cluster/name → name
+      # AKS: aks_project_region_cluster → project/cluster
+      clean: true
 
     # Reads from $KUBECONFIG (colon-separated, multiple files)
     # Falls back to ~/.kube/config
@@ -261,7 +262,7 @@ Multiline values (git.status, git.cwd tree, claude.config) are automatically wra
 | `git.cwd` | `show_tree: true` | Position in repo (breadcrumb or tree) |
 | `git.sign` | always (when in repo) | Branch, flags, ahead/behind, operation |
 | `git.status` | `show_status: true` | git status output (short or long) |
-| `kube.context` | kube module | Kubernetes context (cleaned if `clean_context: true`) |
+| `kube.context` | kube module | Kubernetes context (cleaned if `context.clean: true`) |
 | `kube.namespace` | kube module | Kubernetes namespace (defaults to "default") |
 | `kube.cluster` | kube module | Kubernetes cluster name |
 | `gcp.project` | gcp module | GCP project name |

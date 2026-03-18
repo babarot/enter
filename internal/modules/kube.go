@@ -36,7 +36,7 @@ func (m *KubeModule) Run(ctx *module.Context) *module.Output {
 
 	// Clean context name
 	displayContext := info.context
-	if ctx.Config.Modules.Kube.CleanContext {
+	if ctx.Config.Modules.Kube.Context.Clean {
 		displayContext = cleanContext(info.context)
 	}
 
@@ -68,7 +68,6 @@ func (m *KubeModule) Run(ctx *module.Context) *module.Output {
 		Name:     m.Name(),
 		Segments: segments,
 		Rows:     rows,
-		RowOrder: ctx.Config.Modules.Kube.Order,
 	}
 }
 
