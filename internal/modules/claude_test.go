@@ -200,3 +200,104 @@ func TestClaudeModuleName(t *testing.T) {
 		t.Errorf("Name() = %q, want %q", m.Name(), "claude")
 	}
 }
+
+func TestCheckFile(t *testing.T) {
+	dir := t.TempDir()
+
+	// File doesn't exist
+	item := checkFile(dir, "CLAUDE.md")
+	if item.exists {
+		t.Error("should not exist")
+	}
+	if item.count != -1 {
+		t.Errorf("file check should have count -1, got %d", item.count)
+	}
+
+	// File exists
+	os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte("# test"), 0o644)
+	item = checkFile(dir, "CLAUDE.md")
+	if !item.exists {
+		t.Error("should exist")
+	}
+}
+
+func TestCheckDir(t *testing.T) {
+	dir := t.TempDir()
+
+	// Dir doesn't exist
+	item := checkDir(dir, "rules")
+	if item.exists {
+		t.Error("should not exist")
+	}
+	if item.count != 0 {
+		t.Errorf("missing dir should have count 0, got %d", item.count)
+	}
+
+	// Dir exists with files
+	rulesDir := filepath.Join(dir, "rules")
+	os.Mkdir(rulesDir, 0o755)
+	os.WriteFile(filepath.Join(rulesDir, "rule1.md"), []byte("rule"), 0o644)
+	os.WriteFile(filepath.Join(rulesDir, "rule2.md"), []byte("rule"), 0o644)
+	os.WriteFile(filepath.Join(rulesDir, ".hidden"), []byte("hidden"), 0o644)
+
+	item = checkDir(dir, "rules")
+	if !item.exists {
+		t.Error("should exist")
+	}
+	if item.count != 2 {
+		t.Errorf("should count 2 non-hidden files, got %d", item.count)
+	}
+}
+
+func TestBuildConfigViewAuto(t *testing.T) {
+	dir := t.TempDir()
+
+	// Empty dir — auto returns nothing
+	segs := buildConfigView(dir, "auto")
+	if len(segs) != 0 {
+		t.Error("auto mode with empty dir should return no segments")
+	}
+
+	// Add CLAUDE.md and rules
+	os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte("# test"), 0o644)
+	os.MkdirAll(filepath.Join(dir, ".claude", "rules"), 0o755)
+	os.WriteFile(filepath.Join(dir, ".claude", "rules", "r1.md"), []byte("r"), 0o644)
+
+	segs = buildConfigView(dir, "auto")
+	text := segmentsText(segs)
+	if !strings.Contains(text, "✓") {
+		t.Errorf("auto mode should show ✓, got %q", text)
+	}
+	if !strings.Contains(text, "CLAUDE.md") {
+		t.Errorf("should contain CLAUDE.md, got %q", text)
+	}
+	if !strings.Contains(text, "rules (1)") {
+		t.Errorf("should contain rules (1), got %q", text)
+	}
+	// Should NOT contain missing items
+	if strings.Contains(text, "✗") {
+		t.Errorf("auto mode should not show ✗, got %q", text)
+	}
+}
+
+func TestBuildConfigViewAlways(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte("# test"), 0o644)
+
+	segs := buildConfigView(dir, "always")
+	text := segmentsText(segs)
+
+	// Should show both ✓ and ✗
+	if !strings.Contains(text, "✓") {
+		t.Errorf("always mode should show ✓, got %q", text)
+	}
+	if !strings.Contains(text, "✗") {
+		t.Errorf("always mode should show ✗ for missing items, got %q", text)
+	}
+	if !strings.Contains(text, "CLAUDE.md") {
+		t.Errorf("should contain CLAUDE.md, got %q", text)
+	}
+	if !strings.Contains(text, ".mcp.json") {
+		t.Errorf("always mode should show .mcp.json, got %q", text)
+	}
+}

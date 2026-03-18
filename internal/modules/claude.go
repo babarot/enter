@@ -63,7 +63,7 @@ func (m *ClaudeModule) Run(ctx *module.Context) *module.Output {
 		segments = append(segments, module.NewSegment(seg, color))
 
 		rows = append(rows, module.Row{
-			Key: "claude.current",
+			Key: "claude.usage.5h",
 			Segments: []module.Segment{
 				module.NewSegment(bar+" ", module.Default),
 				module.NewSegment(fmt.Sprintf("%3d%%", pct), color),
@@ -87,7 +87,7 @@ func (m *ClaudeModule) Run(ctx *module.Context) *module.Output {
 		segments = append(segments, module.NewSegment(seg, color))
 
 		rows = append(rows, module.Row{
-			Key: "claude.weekly",
+			Key: "claude.usage.7d",
 			Segments: []module.Segment{
 				module.NewSegment(bar+" ", module.Default),
 				module.NewSegment(fmt.Sprintf("%3d%%", pct), color),
@@ -95,6 +95,22 @@ func (m *ClaudeModule) Run(ctx *module.Context) *module.Output {
 				module.NewSegment(reset, module.Muted),
 			},
 		})
+	}
+
+	// claude.config
+	if cfg.ConfigView.Enabled {
+		configSegs := buildConfigView(ctx.Cwd, cfg.ConfigView.Mode)
+		if len(configSegs) > 0 {
+			rows = append(rows, module.Row{
+				Key:      "claude.config",
+				Segments: configSegs,
+			})
+			// Add to inline too
+			if len(segments) > 0 {
+				segments = append(segments, module.Plain(" | "))
+			}
+			segments = append(segments, configSegs...)
+		}
 	}
 
 	if len(segments) == 0 {
@@ -230,6 +246,91 @@ func pctColor(pct int) module.SemanticColor {
 	default:
 		return module.Success
 	}
+}
+
+// --- claude.config view ---
+
+type configItem struct {
+	label  string
+	exists bool
+	count  int // -1 means not a directory (just a file check)
+}
+
+func buildConfigView(cwd, mode string) []module.Segment {
+	// Find project root (git root or cwd)
+	root := cwd
+	if toplevel, ok := execGit(cwd, "rev-parse", "--show-toplevel"); ok {
+		root = toplevel
+	}
+
+	items := []configItem{
+		checkFile(root, "CLAUDE.md"),
+		checkFile(root, ".claude/settings.json"),
+		checkFile(root, ".claude/settings.local.json"),
+		checkDir(root, ".claude/rules"),
+		checkDir(root, ".claude/skills"),
+		checkDir(root, ".claude/agents"),
+		checkDir(root, ".claude/commands"),
+		checkFile(root, ".mcp.json"),
+	}
+
+	var segments []module.Segment
+	first := true
+	for _, item := range items {
+		if mode == "auto" && !item.exists {
+			continue
+		}
+
+		if !first {
+			segments = append(segments, module.Plain("\n"))
+		}
+		first = false
+
+		if item.exists {
+			segments = append(segments, module.NewSegment("✓ ", module.Success))
+		} else {
+			segments = append(segments, module.NewSegment("✗ ", module.Muted))
+		}
+
+		label := item.label
+		if item.count >= 0 && item.exists {
+			label = fmt.Sprintf("%s (%d)", item.label, item.count)
+		}
+
+		color := module.Secondary
+		if !item.exists {
+			color = module.Muted
+		}
+		segments = append(segments, module.NewSegment(label, color))
+	}
+
+	return segments
+}
+
+func checkFile(root, rel string) configItem {
+	path := filepath.Join(root, rel)
+	_, err := os.Stat(path)
+	return configItem{
+		label:  rel,
+		exists: err == nil,
+		count:  -1,
+	}
+}
+
+func checkDir(root, rel string) configItem {
+	path := filepath.Join(root, rel)
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return configItem{label: rel, exists: false, count: 0}
+	}
+	// Count only files (not subdirs starting with .)
+	count := 0
+	for _, e := range entries {
+		if !strings.HasPrefix(e.Name(), ".") {
+			count++
+		}
+	}
+	return configItem{label: rel, exists: true, count: count}
 }
 
 // --- OAuth token resolution ---

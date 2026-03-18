@@ -3,15 +3,16 @@
 Show contextual info every time you press Enter in your shell.
 
 ```
-╭───────────────┬──────────────────────────────────────────╮
-│pwd            │ ~/s/g/babarot/project                    │
-│git.url        │ https://github.com/babarot/project       │
-│git.sign       │ (main *%)                                │
-│git.cwd        │ /                                        │
-│git.status     │ M  internal/modules/git.go               │
-│claude.current │ ▰▱▱▱▱▱▱▱▱▱  14% ⟳ 3:00pm                │
-│claude.weekly  │ ▰▱▱▱▱▱▱▱▱▱  14% ⟳ Mar 19, 2:00pm        │
-╰───────────────┴──────────────────────────────────────────╯
+╭────────────────┬──────────────────────────────────────────╮
+│pwd             │ ~/s/g/babarot/project                    │
+│git.url         │ https://github.com/babarot/project       │
+│git.sign        │ (main *%)                                │
+│git.cwd         │ /                                        │
+│git.status      │ M  internal/modules/git.go               │
+│claude.usage.5h │ ▰▱▱▱▱▱▱▱▱▱  14% ⟳ 3:00pm               │
+│claude.usage.7d │ ▰▱▱▱▱▱▱▱▱▱  14% ⟳ Mar 19, 2:00pm       │
+│claude.config   │ ✓ CLAUDE.md  ✓ rules (3)  ✓ skills (2)  │
+╰────────────────┴──────────────────────────────────────────╯
 ```
 
 ## Install
@@ -185,6 +186,20 @@ modules:
     # 1. $CLAUDE_CODE_OAUTH_TOKEN
     # 2. macOS Keychain (Claude Code-credentials)
     # 3. ~/.claude/.credentials.json
+
+    # Show Claude Code project configuration status
+    config_view:
+      enabled: true
+
+      # Display mode:
+      #   auto   - show only existing items with ✓
+      #   always - show all items with ✓/✗
+      mode: "auto"
+
+    # Checked items:
+    # CLAUDE.md, .claude/settings.json, .claude/settings.local.json,
+    # .claude/rules/, .claude/skills/, .claude/agents/,
+    # .claude/commands/, .mcp.json
 ```
 
 ### Display Formats
@@ -192,21 +207,26 @@ modules:
 **table** (default):
 
 ```
-╭───────────────┬──────────────────────────────────────────╮
-│pwd            │ ~/s/g/babarot/enter                      │
-│git.url        │ https://github.com/babarot/enter         │
-│git.sign       │ (main *%)                                │
-│git.cwd        │ /                                        │
-│git.status     │ ╭───────────────────────────────╮        │
-│               │ │ M  internal/modules/git.go    │        │
-│               │ │ ?? internal/modules/claude.go │        │
-│               │ ╰───────────────────────────────╯        │
-│claude.current │ ▰▱▱▱▱▱▱▱▱▱  14% ⟳ 3:00pm                │
-│claude.weekly  │ ▰▱▱▱▱▱▱▱▱▱  14% ⟳ Mar 19, 2:00pm        │
-╰───────────────┴──────────────────────────────────────────╯
+╭────────────────┬──────────────────────────────────────────╮
+│pwd             │ ~/s/g/babarot/project                    │
+│git.url         │ https://github.com/babarot/project       │
+│git.sign        │ (main *%)                                │
+│git.cwd         │ /                                        │
+│git.status      │ ╭──────────────────────────╮             │
+│                │ │ M  internal/modules/git.go│             │
+│                │ ╰──────────────────────────╯             │
+│claude.usage.5h │ ▰▱▱▱▱▱▱▱▱▱  14% ⟳ 3:00pm               │
+│claude.usage.7d │ ▰▱▱▱▱▱▱▱▱▱  14% ⟳ Mar 19, 2:00pm       │
+│claude.config   │ ╭───────────────────────────╮            │
+│                │ │ ✓ CLAUDE.md               │            │
+│                │ │ ✓ .claude/settings.json   │            │
+│                │ │ ✓ .claude/rules (3)       │            │
+│                │ │ ✓ .claude/skills (2)      │            │
+│                │ ╰───────────────────────────╯            │
+╰────────────────┴──────────────────────────────────────────╯
 ```
 
-Multiline values (git.status, git.cwd tree) are automatically wrapped in nested boxes.
+Multiline values (git.status, git.cwd tree, claude.config) are automatically wrapped in nested boxes.
 
 **inline**:
 
@@ -221,8 +241,8 @@ pwd              ~/s/g/babarot/enter
 git.url          https://github.com/babarot/enter
 git.sign         (main *%)
 git.cwd          /
-claude.current   ▰▱▱▱▱▱▱▱▱▱  14% ⟳ 3:00pm
-claude.weekly    ▰▱▱▱▱▱▱▱▱▱  14% ⟳ Mar 19, 2:00pm
+claude.usage.5h   ▰▱▱▱▱▱▱▱▱▱  14% ⟳ 3:00pm
+claude.usage.7d    ▰▱▱▱▱▱▱▱▱▱  14% ⟳ Mar 19, 2:00pm
 ```
 
 ### Table/Compact Row Keys
@@ -236,8 +256,9 @@ claude.weekly    ▰▱▱▱▱▱▱▱▱▱  14% ⟳ Mar 19, 2:00pm
 | `git.status` | `show_status: true` | git status output (short or long) |
 | `kube` | kube module | Kubernetes current-context |
 | `gcp` | gcp module | GCP project |
-| `claude.current` | claude module | 5-hour usage window with progress bar |
-| `claude.weekly` | claude module | 7-day usage window with progress bar |
+| `claude.usage.5h` | claude module | 5-hour rolling window utilization |
+| `claude.usage.7d` | claude module | 7-day rolling window utilization |
+| `claude.config` | `config_view.enabled: true` | Project config status (CLAUDE.md, rules, skills, etc.) |
 
 ### Themes
 
@@ -282,7 +303,7 @@ internal/
     ├── git.go           Git status, repo URL, tree, status output
     ├── kube.go          Kubernetes context
     ├── gcp.go           GCP project
-    └── claude.go        Claude Code API usage (current/weekly)
+    └── claude.go        Claude Code API usage + project config status
 ```
 
 All modules run in parallel using goroutines. Each module returns `nil` if disabled or has nothing to display.

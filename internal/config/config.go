@@ -58,11 +58,17 @@ type GcpConfig struct {
 }
 
 type ClaudeConfig struct {
-	Enabled   bool   `yaml:"enabled"`
-	Mode      string `yaml:"mode"`        // "always" | "auto"
-	BarStyle  string `yaml:"bar_style"`   // "block" | "dot" | "fill"
-	TimeStyle string `yaml:"time_style"`  // "absolute" | "relative"
-	CacheTTL  int    `yaml:"cache_ttl"`   // seconds
+	Enabled    bool              `yaml:"enabled"`
+	Mode       string            `yaml:"mode"`         // "always" | "auto"
+	BarStyle   string            `yaml:"bar_style"`    // "block" | "dot" | "fill"
+	TimeStyle  string            `yaml:"time_style"`   // "absolute" | "relative"
+	CacheTTL   int               `yaml:"cache_ttl"`    // seconds
+	ConfigView ClaudeConfigView  `yaml:"config_view"`
+}
+
+type ClaudeConfigView struct {
+	Enabled bool   `yaml:"enabled"`
+	Mode    string `yaml:"mode"` // "always" | "auto"
 }
 
 func Default() *Config {
@@ -99,6 +105,10 @@ func Default() *Config {
 				BarStyle:  "block",
 				TimeStyle: "absolute",
 				CacheTTL:  120,
+				ConfigView: ClaudeConfigView{
+					Enabled: true,
+					Mode:    "auto",
+				},
 			},
 		},
 	}
@@ -202,5 +212,8 @@ modules:
     bar_style: "block"      # block (▰▱) | dot (●○) | fill (█░)
     time_style: "absolute"  # absolute (3:00pm) | relative (22m left)
     cache_ttl: 120          # cache duration in seconds
+    config_view:
+      enabled: true
+      mode: "auto"          # always (show ✓/✗) | auto (show existing only)
 `
 }
