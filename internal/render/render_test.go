@@ -267,10 +267,13 @@ func TestReorderRowsEmpty(t *testing.T) {
 	}
 }
 
-func TestRenderWithRowOrder(t *testing.T) {
+func TestRenderWithSubKeyOrder(t *testing.T) {
 	cfg := config.Default()
 	cfg.Format = "table"
 	cfg.KeyStyle = "flat"
+	cfg.SubKeyOrder = map[string][]string{
+		"git": {"sign", "url"},
+	}
 	outputs := []*module.Output{
 		{
 			Name:     "git",
@@ -279,7 +282,6 @@ func TestRenderWithRowOrder(t *testing.T) {
 				{Key: "git.url", Segments: []module.Segment{module.NewSegment("https://example.com", module.Primary)}},
 				{Key: "git.sign", Segments: []module.Segment{module.NewSegment("(main)", module.Success)}},
 			},
-			RowOrder: []string{"sign", "url"},
 		},
 	}
 
@@ -291,7 +293,7 @@ func TestRenderWithRowOrder(t *testing.T) {
 		t.Fatalf("both sign and url should be present, got %q", result)
 	}
 	if signIdx > urlIdx {
-		t.Error("sign should appear before url with RowOrder [sign, url]")
+		t.Error("sign should appear before url with SubKeyOrder")
 	}
 }
 

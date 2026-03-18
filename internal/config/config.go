@@ -16,7 +16,8 @@ type Config struct {
 	Modules      ModulesConfig `yaml:"modules"`
 
 	// Derived from YAML key order (not a YAML field)
-	ModuleOrder []string `yaml:"-"`
+	ModuleOrder    []string            `yaml:"-"`
+	SubKeyOrder    map[string][]string `yaml:"-"` // module name → sub-key order
 }
 
 type ModulesConfig struct {
@@ -181,8 +182,8 @@ func Load(path string) *Config {
 		return Default()
 	}
 
-	// Extract module order from YAML key order using goccy/go-yaml
-	cfg.ModuleOrder = extractModuleOrder(data)
+	// Extract module and sub-key order from YAML key order
+	cfg.ModuleOrder, cfg.SubKeyOrder = extractOrder(data)
 
 	// Validate and normalize config values
 	cfg.validate()
@@ -250,42 +251,60 @@ func (c *Config) validate() {
 	}
 }
 
-// extractModuleOrder parses the YAML with goccy/go-yaml MapSlice
-// to extract the key order of the "modules" section.
-func extractModuleOrder(data []byte) []string {
+// extractOrder parses the YAML with goccy/go-yaml MapSlice
+// to extract both module order and sub-key order per module.
+func extractOrder(data []byte) ([]string, map[string][]string) {
 	var raw yaml.MapSlice
 	if err := yaml.UnmarshalWithOptions(data, &raw, yaml.UseOrderedMap()); err != nil {
-		return DefaultModuleOrder
+		return DefaultModuleOrder, nil
 	}
 
 	// Find "modules" key
 	for _, item := range raw {
 		if key, ok := item.Key.(string); ok && key == "modules" {
 			if modules, ok := item.Value.(yaml.MapSlice); ok {
-				var order []string
+				var moduleOrder []string
+				subKeyOrder := make(map[string][]string)
+
 				for _, m := range modules {
-					if name, ok := m.Key.(string); ok {
-						order = append(order, name)
+					name, ok := m.Key.(string)
+					if !ok {
+						continue
+					}
+					moduleOrder = append(moduleOrder, name)
+
+					// Extract sub-key order from this module's keys
+					if modValue, ok := m.Value.(yaml.MapSlice); ok {
+						var subKeys []string
+						for _, field := range modValue {
+							if fieldName, ok := field.Key.(string); ok {
+								subKeys = append(subKeys, fieldName)
+							}
+						}
+						if len(subKeys) > 0 {
+							subKeyOrder[name] = subKeys
+						}
 					}
 				}
-				if len(order) > 0 {
+
+				if len(moduleOrder) > 0 {
 					// Append any default modules not in config
 					seen := make(map[string]bool)
-					for _, name := range order {
+					for _, name := range moduleOrder {
 						seen[name] = true
 					}
 					for _, name := range DefaultModuleOrder {
 						if !seen[name] {
-							order = append(order, name)
+							moduleOrder = append(moduleOrder, name)
 						}
 					}
-					return order
+					return moduleOrder, subKeyOrder
 				}
 			}
 		}
 	}
 
-	return DefaultModuleOrder
+	return DefaultModuleOrder, nil
 }
 
 func GenerateDefault() string {

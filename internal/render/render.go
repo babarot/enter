@@ -38,7 +38,7 @@ func renderInline(outputs []*module.Output, cfg *config.Config, theme *ThemePale
 // flattenRows expands outputs into key-value pairs.
 // If a module has Rows, each row becomes a separate entry.
 // Otherwise, the module's Name + Segments become a single entry.
-func flattenRows(outputs []*module.Output, theme *ThemePalette) []struct{ key, value string } {
+func flattenRows(outputs []*module.Output, cfg *config.Config, theme *ThemePalette) []struct{ key, value string } {
 	borderColor := lipgloss.Color(toHex(theme.Muted))
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -67,9 +67,11 @@ func flattenRows(outputs []*module.Output, theme *ThemePalette) []struct{ key, v
 				filtered = append(filtered, row)
 			}
 
-			// Reorder rows if RowOrder is specified
-			if len(out.RowOrder) > 0 {
-				filtered = reorderRows(filtered, out.Name, out.RowOrder)
+			// Reorder rows by YAML key order if available
+			if cfg.SubKeyOrder != nil {
+				if order, ok := cfg.SubKeyOrder[out.Name]; ok {
+					filtered = reorderRows(filtered, out.Name, order)
+				}
 			}
 
 			for _, row := range filtered {
@@ -95,7 +97,7 @@ func flattenRows(outputs []*module.Output, theme *ThemePalette) []struct{ key, v
 }
 
 func renderTable(outputs []*module.Output, cfg *config.Config, theme *ThemePalette) string {
-	entries := flattenRows(outputs, theme)
+	entries := flattenRows(outputs, cfg, theme)
 	if len(entries) == 0 {
 		return ""
 	}

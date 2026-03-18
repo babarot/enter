@@ -207,7 +207,7 @@ func TestModuleOrderMissing(t *testing.T) {
 }
 
 func TestExtractModuleOrderInvalidYAML(t *testing.T) {
-	order := extractModuleOrder([]byte("{{invalid"))
+	order, _ := extractOrder([]byte("{{invalid"))
 	for i, name := range DefaultModuleOrder {
 		if order[i] != name {
 			t.Errorf("invalid yaml order[%d]: got %q, want %q", i, order[i], name)
