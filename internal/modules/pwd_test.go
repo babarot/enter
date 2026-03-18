@@ -19,7 +19,9 @@ func TestFormatPath(t *testing.T) {
 		{"full no home", "/opt/data", "full", "/opt/data"},
 
 		// short style
-		{"short basic", "/Users/test/src/github/project", "short", "~/s/g/project"},
+		{"short deep", "/Users/test/src/github/com/babarot/enter", "short", "~/s/g/c/babarot/enter"},
+		{"short 4 parts", "/Users/test/src/github/project", "short", "~/s/github/project"},
+		{"short 3 parts", "/Users/test/src/project", "short", "~/src/project"},
 		{"short shallow", "/Users/test/dir", "short", "~/dir"},
 
 		// basename style
@@ -40,10 +42,13 @@ func TestShortenPath(t *testing.T) {
 	tests := []struct {
 		path, want string
 	}{
-		{"~/src/github/project", "~/s/g/project"},
+		{"~/src/github/com/babarot/enter", "~/s/g/c/babarot/enter"},
+		{"~/src/github/project", "~/s/github/project"},
+		{"~/src/project", "~/src/project"},
 		{"~/dir", "~/dir"},
 		{"/a/b/c", "/a/b/c"},
-		{"/usr/local/bin", "/u/l/bin"},
+		{"/usr/local/bin", "/u/local/bin"},
+		{"/usr/local/share/bin", "/u/l/share/bin"},
 	}
 
 	for _, tt := range tests {

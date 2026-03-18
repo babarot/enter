@@ -11,8 +11,8 @@ func TestDefault(t *testing.T) {
 	if cfg.Theme != "default" {
 		t.Errorf("theme: got %q, want %q", cfg.Theme, "default")
 	}
-	if cfg.Format != "inline" {
-		t.Errorf("format: got %q, want %q", cfg.Format, "inline")
+	if cfg.Format != "table" {
+		t.Errorf("format: got %q, want %q", cfg.Format, "table")
 	}
 	if !cfg.Modules.Pwd.Enabled {
 		t.Error("pwd should be enabled by default")

@@ -59,20 +59,20 @@ type GcpConfig struct {
 func Default() *Config {
 	return &Config{
 		Theme:     "default",
-		Format:    "inline",
+		Format:    "table",
 		Separator: " │ ",
 		Modules: ModulesConfig{
 			Pwd: PwdConfig{
 				Enabled: true,
-				Style:   "parent",
+				Style:   "short",
 			},
 			Git: GitConfig{
 				Enabled:       true,
-				ShowRepo:      false,
-				ShowIndicator: false,
-				ShowTree:      false,
-				ShowStatus:    false,
-				TreeStyle:     "breadcrumb",
+				ShowRepo:      true,
+				ShowIndicator: true,
+				ShowTree:      true,
+				ShowStatus:    true,
+				TreeStyle:     "tree",
 				StatusStyle:   "short",
 				Symbols:       DefaultGitSymbols(),
 			},
@@ -148,21 +148,21 @@ func Load(path string) *Config {
 
 func GenerateDefault() string {
 	return `theme: "default"
-format: "inline"            # inline | table | compact
+format: "table"             # inline | table | compact
 separator: " │ "
 
 modules:
   pwd:
     enabled: true
-    style: "parent"       # parent | full | short | basename
+    style: "short"        # parent | full | short | basename
 
   git:
     enabled: true
-    show_repo: false        # show repository URL
-    show_indicator: false   # show whether in a git repo
-    show_tree: false        # show current position in repo
-    show_status: false      # show git status output
-    tree_style: "breadcrumb" # breadcrumb | tree
+    show_repo: true         # show repository URL
+    show_indicator: true    # show whether in a git repo
+    show_tree: true         # show current position in repo
+    show_status: true       # show git status output
+    tree_style: "tree"      # breadcrumb | tree
     status_style: "short"   # short | long
     symbols:
       unstaged: "*"

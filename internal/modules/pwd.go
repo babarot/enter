@@ -65,11 +65,12 @@ func formatPath(path, home, style string) string {
 
 func shortenPath(path string) string {
 	parts := strings.Split(path, "/")
-	if len(parts) <= 2 {
+	if len(parts) <= 3 {
 		return path
 	}
 
-	for i := 0; i < len(parts)-1; i++ {
+	// Keep last 2 parts full, shorten the rest
+	for i := 0; i < len(parts)-2; i++ {
 		if parts[i] == "" || parts[i] == "~" {
 			continue
 		}

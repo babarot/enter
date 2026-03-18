@@ -250,11 +250,12 @@ func TestGitModuleDisabled(t *testing.T) {
 func TestGitModuleNotARepo(t *testing.T) {
 	m := &GitModule{}
 	cfg := config.Default()
+	cfg.Modules.Git.ShowIndicator = false
 	ctx := &module.Context{Cwd: t.TempDir(), Config: cfg}
 
 	out := m.Run(ctx)
 	if out != nil {
-		t.Error("git module outside repo should return nil")
+		t.Error("git module outside repo with show_indicator=false should return nil")
 	}
 }
 
