@@ -2,6 +2,7 @@ package modules
 
 import (
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/babarot/enter/internal/module"
@@ -28,33 +29,42 @@ func (m *KubeModule) Run(ctx *module.Context) *module.Output {
 		return nil
 	}
 
+	// Default namespace
+	if info.namespace == "" {
+		info.namespace = "default"
+	}
+
+	// Clean context name
+	displayContext := info.context
+	if ctx.Config.Modules.Kube.CleanContext {
+		displayContext = cleanContext(info.context)
+	}
+
 	symbol := ctx.Config.Modules.Kube.Symbol
 
-	// Inline: ⎈ context (cluster/namespace)
-	var segments []module.Segment
-	segments = append(segments, module.NewSegment(symbol, module.Primary))
-	segments = append(segments, module.Plain(" "))
-	segments = append(segments, module.NewSegment(info.context, module.Primary))
-	if info.namespace != "" {
-		segments = append(segments, module.NewSegment("/"+info.namespace, module.Muted))
+	// Inline: ⎈ context/namespace
+	segments := []module.Segment{
+		module.NewSegment(symbol, module.Primary),
+		module.Plain(" "),
+		module.NewSegment(displayContext, module.Primary),
+		module.NewSegment("/"+info.namespace, module.Muted),
 	}
 
 	// Rows
-	var rows []module.Row
-	rows = append(rows, module.Row{
-		Key:      "kube.context",
-		Segments: []module.Segment{module.NewSegment(info.context, module.Primary)},
-	})
+	rows := []module.Row{
+		{
+			Key:      "kube.context",
+			Segments: []module.Segment{module.NewSegment(displayContext, module.Primary)},
+		},
+		{
+			Key:      "kube.namespace",
+			Segments: []module.Segment{module.NewSegment(info.namespace, module.Accent)},
+		},
+	}
 	if info.cluster != "" {
 		rows = append(rows, module.Row{
 			Key:      "kube.cluster",
 			Segments: []module.Segment{module.NewSegment(info.cluster, module.Secondary)},
-		})
-	}
-	if info.namespace != "" {
-		rows = append(rows, module.Row{
-			Key:      "kube.namespace",
-			Segments: []module.Segment{module.NewSegment(info.namespace, module.Accent)},
 		})
 	}
 
@@ -64,6 +74,57 @@ func (m *KubeModule) Run(ctx *module.Context) *module.Output {
 		Rows:     rows,
 		RowOrder: ctx.Config.Modules.Kube.Order,
 	}
+}
+
+// cleanContext strips cloud provider prefixes and regions from context names.
+//
+//	GKE: gke_project_asia-northeast1-a_cluster → project/cluster
+//	EKS: arn:aws:eks:us-west-2:123456:cluster/name → name
+//	AKS: aks_project_eastus_cluster → project/cluster
+//	Other: returned as-is
+func cleanContext(ctx string) string {
+	switch {
+	case strings.HasPrefix(ctx, "gke_"):
+		return cleanGKE(ctx)
+	case strings.HasPrefix(ctx, "arn:aws:eks:") || strings.HasPrefix(ctx, "eks_"):
+		return cleanEKS(ctx)
+	case strings.HasPrefix(ctx, "aks_"):
+		return cleanAKS(ctx)
+	default:
+		return ctx
+	}
+}
+
+var gkeRegionRe = regexp.MustCompile(`_[a-z]+-[a-z]+\d+-[a-z]_?`)
+
+func cleanGKE(ctx string) string {
+	// gke_project_asia-northeast1-a_cluster → project/cluster
+	ctx = strings.TrimPrefix(ctx, "gke_")
+	ctx = gkeRegionRe.ReplaceAllString(ctx, "/")
+	ctx = strings.TrimSuffix(ctx, "/")
+	return ctx
+}
+
+func cleanEKS(ctx string) string {
+	// arn:aws:eks:us-west-2:123456:cluster/name → name
+	if strings.HasPrefix(ctx, "arn:") {
+		if idx := strings.LastIndex(ctx, "/"); idx >= 0 {
+			return ctx[idx+1:]
+		}
+	}
+	// eks_name_region → name
+	ctx = strings.TrimPrefix(ctx, "eks_")
+	parts := strings.SplitN(ctx, "_", 2)
+	return parts[0]
+}
+
+var aksRegionRe = regexp.MustCompile(`_(east|west|central|north|south)(us|eu|asia|uk|au|in|japan|korea|canada|france|germany|brazil|uae)\d*_`)
+
+func cleanAKS(ctx string) string {
+	// aks_project_eastus_cluster → project/cluster
+	ctx = strings.TrimPrefix(ctx, "aks_")
+	ctx = aksRegionRe.ReplaceAllString(ctx, "/")
+	return ctx
 }
 
 func getKubeInfo() *kubeInfo {
@@ -91,13 +152,13 @@ func kubeconfigPaths() []string {
 
 // kubeconfig YAML structure (minimal)
 type kubeconfigDoc struct {
-	CurrentContext string            `yaml:"current-context"`
-	Contexts       []kubeconfigCtx  `yaml:"contexts"`
+	CurrentContext string           `yaml:"current-context"`
+	Contexts       []kubeconfigCtx `yaml:"contexts"`
 }
 
 type kubeconfigCtx struct {
-	Name    string             `yaml:"name"`
-	Context kubeconfigCtxData  `yaml:"context"`
+	Name    string            `yaml:"name"`
+	Context kubeconfigCtxData `yaml:"context"`
 }
 
 type kubeconfigCtxData struct {
@@ -122,7 +183,6 @@ func readKubeInfo(path string) *kubeInfo {
 
 	info := &kubeInfo{context: doc.CurrentContext}
 
-	// Find matching context to get cluster and namespace
 	for _, ctx := range doc.Contexts {
 		if ctx.Name == doc.CurrentContext {
 			info.cluster = ctx.Context.Cluster

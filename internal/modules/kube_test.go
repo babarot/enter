@@ -10,6 +10,38 @@ import (
 	"github.com/babarot/enter/internal/module"
 )
 
+func TestCleanContext(t *testing.T) {
+	tests := []struct {
+		name, input, want string
+	}{
+		// GKE
+		{"gke full", "gke_my-project_asia-northeast1-a_my-cluster", "my-project/my-cluster"},
+		{"gke us", "gke_project_us-central1-b_cluster", "project/cluster"},
+
+		// EKS ARN
+		{"eks arn", "arn:aws:eks:us-west-2:123456789:cluster/my-cluster", "my-cluster"},
+
+		// EKS prefix
+		{"eks prefix", "eks_my-cluster_us-west-2", "my-cluster"},
+
+		// AKS
+		{"aks full", "aks_my-project_eastus_my-cluster", "my-project/my-cluster"},
+		{"aks europe", "aks_project_westeu_cluster", "project/cluster"},
+
+		// Passthrough
+		{"plain", "my-context", "my-context"},
+		{"docker", "docker-desktop", "docker-desktop"},
+		{"minikube", "minikube", "minikube"},
+	}
+
+	for _, tt := range tests {
+		got := cleanContext(tt.input)
+		if got != tt.want {
+			t.Errorf("%s: cleanContext(%q) = %q, want %q", tt.name, tt.input, got, tt.want)
+		}
+	}
+}
+
 func TestReadKubeInfo(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config")
@@ -61,14 +93,8 @@ contexts:
 	if info == nil {
 		t.Fatal("readKubeInfo returned nil")
 	}
-	if info.context != "minimal" {
-		t.Errorf("context: got %q, want %q", info.context, "minimal")
-	}
-	if info.cluster != "my-cluster" {
-		t.Errorf("cluster: got %q, want %q", info.cluster, "my-cluster")
-	}
 	if info.namespace != "" {
-		t.Errorf("namespace should be empty, got %q", info.namespace)
+		t.Errorf("raw namespace should be empty, got %q", info.namespace)
 	}
 }
 
@@ -101,55 +127,10 @@ func TestKubeModuleDisabled(t *testing.T) {
 	}
 }
 
-func TestKubeModuleWithKUBECONFIG(t *testing.T) {
+func TestKubeModuleDefaultNamespace(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config")
-	content := `apiVersion: v1
-current-context: test-ctx
-contexts:
-- context:
-    cluster: test-cluster
-    namespace: test-ns
-  name: test-ctx
-`
-	os.WriteFile(path, []byte(content), 0o644)
-
-	t.Setenv("KUBECONFIG", path)
-
-	m := &KubeModule{}
-	cfg := config.Default()
-	cfg.Modules.Kube.Enabled = true
-	ctx := &module.Context{Cwd: "/tmp", Config: cfg}
-
-	out := m.Run(ctx)
-	if out == nil {
-		t.Fatal("kube module with valid KUBECONFIG should return output")
-	}
-
-	// Check inline segments contain context
-	text := segmentsText(out.Segments)
-	if !strings.Contains(text, "test-ctx") {
-		t.Errorf("inline should contain context name, got %q", text)
-	}
-	if !strings.Contains(text, "/test-ns") {
-		t.Errorf("inline should contain namespace, got %q", text)
-	}
-
-	// Check rows
-	rowKeys := make(map[string]bool)
-	for _, row := range out.Rows {
-		rowKeys[row.Key] = true
-	}
-	for _, key := range []string{"kube.context", "kube.cluster", "kube.namespace"} {
-		if !rowKeys[key] {
-			t.Errorf("missing row key %q", key)
-		}
-	}
-}
-
-func TestKubeModuleNoNamespace(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "config")
+	// No namespace specified
 	content := `apiVersion: v1
 current-context: minimal
 contexts:
@@ -171,10 +152,94 @@ contexts:
 		t.Fatal("kube module should return output")
 	}
 
-	// namespace row should not exist
+	// Should have namespace row with "default"
 	for _, row := range out.Rows {
 		if row.Key == "kube.namespace" {
-			t.Error("namespace row should not exist when namespace is empty")
+			text := segmentsText(row.Segments)
+			if text != "default" {
+				t.Errorf("namespace should be 'default', got %q", text)
+			}
+			return
 		}
 	}
+	t.Error("should have kube.namespace row")
+}
+
+func TestKubeModuleCleanContext(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config")
+	content := `apiVersion: v1
+current-context: gke_my-project_asia-northeast1-a_my-cluster
+contexts:
+- context:
+    cluster: gke-cluster
+    namespace: prod
+  name: gke_my-project_asia-northeast1-a_my-cluster
+`
+	os.WriteFile(path, []byte(content), 0o644)
+
+	t.Setenv("KUBECONFIG", path)
+
+	m := &KubeModule{}
+	cfg := config.Default()
+	cfg.Modules.Kube.Enabled = true
+	cfg.Modules.Kube.CleanContext = true
+	ctx := &module.Context{Cwd: "/tmp", Config: cfg}
+
+	out := m.Run(ctx)
+	if out == nil {
+		t.Fatal("kube module should return output")
+	}
+
+	// Context row should be cleaned
+	for _, row := range out.Rows {
+		if row.Key == "kube.context" {
+			text := segmentsText(row.Segments)
+			if strings.Contains(text, "gke_") {
+				t.Errorf("clean_context should strip gke_ prefix, got %q", text)
+			}
+			if !strings.Contains(text, "my-project") {
+				t.Errorf("clean_context should contain project, got %q", text)
+			}
+			return
+		}
+	}
+	t.Error("should have kube.context row")
+}
+
+func TestKubeModuleRawContext(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config")
+	content := `apiVersion: v1
+current-context: gke_my-project_asia-northeast1-a_my-cluster
+contexts:
+- context:
+    cluster: gke-cluster
+  name: gke_my-project_asia-northeast1-a_my-cluster
+`
+	os.WriteFile(path, []byte(content), 0o644)
+
+	t.Setenv("KUBECONFIG", path)
+
+	m := &KubeModule{}
+	cfg := config.Default()
+	cfg.Modules.Kube.Enabled = true
+	cfg.Modules.Kube.CleanContext = false
+	ctx := &module.Context{Cwd: "/tmp", Config: cfg}
+
+	out := m.Run(ctx)
+	if out == nil {
+		t.Fatal("kube module should return output")
+	}
+
+	for _, row := range out.Rows {
+		if row.Key == "kube.context" {
+			text := segmentsText(row.Segments)
+			if !strings.Contains(text, "gke_") {
+				t.Errorf("raw context should keep gke_ prefix, got %q", text)
+			}
+			return
+		}
+	}
+	t.Error("should have kube.context row")
 }

@@ -54,9 +54,10 @@ type GitSymbols struct {
 }
 
 type KubeConfig struct {
-	Enabled bool     `yaml:"enabled"`
-	Symbol  string   `yaml:"symbol"`
-	Order   []string `yaml:"order"`
+	Enabled      bool     `yaml:"enabled"`
+	Symbol       string   `yaml:"symbol"`
+	CleanContext bool     `yaml:"clean_context"` // strip cloud provider prefixes from context name
+	Order        []string `yaml:"order"`
 }
 
 type GcpConfig struct {
@@ -105,8 +106,9 @@ func Default() *Config {
 				Symbols:       DefaultGitSymbols(),
 			},
 			Kube: KubeConfig{
-				Enabled: false,
-				Symbol:  "⎈",
+				Enabled:      false,
+				Symbol:       "⎈",
+				CleanContext: true,
 			},
 			Gcp: GcpConfig{
 				Enabled: false,
@@ -298,6 +300,7 @@ modules:
   kube:
     enabled: false
     # symbol: "⎈"
+    clean_context: true     # strip cloud provider prefixes (GKE/EKS/AKS)
 
   gcp:
     enabled: false
