@@ -164,14 +164,43 @@ func TestRenderWithRows(t *testing.T) {
 	}
 
 	result := Render(outputs, cfg)
-	if !strings.Contains(result, "git.url") {
-		t.Error("table render with rows should contain git.url key")
+	// Default key_style is "tree", so keys become "├── url", "└── sign"
+	if !strings.Contains(result, "url") {
+		t.Error("table render with rows should contain url key")
 	}
-	if !strings.Contains(result, "git.sign") {
-		t.Error("table render with rows should contain git.sign key")
+	if !strings.Contains(result, "sign") {
+		t.Error("table render with rows should contain sign key")
 	}
 	if !strings.Contains(result, "test/repo") {
 		t.Error("table render with rows should contain repo URL")
+	}
+	// Should have group header
+	if !strings.Contains(result, "git") {
+		t.Error("table render with tree keys should contain git group header")
+	}
+}
+
+func TestRenderWithRowsFlat(t *testing.T) {
+	cfg := config.Default()
+	cfg.Format = "table"
+	cfg.KeyStyle = "flat"
+	outputs := []*module.Output{
+		{
+			Name:     "git",
+			Segments: []module.Segment{module.NewSegment("(main)", module.Success)},
+			Rows: []module.Row{
+				{Key: "git.url", Segments: []module.Segment{module.NewSegment("https://github.com/test/repo", module.Primary)}},
+				{Key: "git.sign", Segments: []module.Segment{module.NewSegment("(main)", module.Success)}},
+			},
+		},
+	}
+
+	result := Render(outputs, cfg)
+	if !strings.Contains(result, "git.url") {
+		t.Error("flat render should contain git.url")
+	}
+	if !strings.Contains(result, "git.sign") {
+		t.Error("flat render should contain git.sign")
 	}
 }
 

@@ -11,7 +11,8 @@ type Config struct {
 	Theme        string        `yaml:"theme"`
 	Format       string        `yaml:"format"`
 	Separator    string        `yaml:"separator"`
-	Trigger      string        `yaml:"trigger"` // "always" | "on_cd"
+	Trigger      string        `yaml:"trigger"`   // "always" | "on_cd"
+	KeyStyle     string        `yaml:"key_style"` // "flat" | "tree"
 	Modules      ModulesConfig `yaml:"modules"`
 }
 
@@ -78,6 +79,7 @@ func Default() *Config {
 		Format:    "table",
 		Separator: " │ ",
 		Trigger:   "always",
+		KeyStyle:  "tree",
 		Modules: ModulesConfig{
 			Pwd: PwdConfig{
 				Enabled: true,
@@ -179,6 +181,7 @@ func GenerateDefault() string {
 format: "table"             # inline | table | compact
 separator: " │ "
 trigger: "always"           # always | on_cd
+key_style: "tree"           # flat (git.sign) | tree (├── sign)
 
 modules:
   pwd:

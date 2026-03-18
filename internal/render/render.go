@@ -88,10 +88,14 @@ func flattenRows(outputs []*module.Output, theme *ThemePalette) []struct{ key, v
 	return result
 }
 
-func renderTable(outputs []*module.Output, _ *config.Config, theme *ThemePalette) string {
+func renderTable(outputs []*module.Output, cfg *config.Config, theme *ThemePalette) string {
 	entries := flattenRows(outputs, theme)
 	if len(entries) == 0 {
 		return ""
+	}
+
+	if cfg.KeyStyle == "tree" {
+		entries = treeifyKeys(entries)
 	}
 
 	var rows [][]string
@@ -115,8 +119,11 @@ func renderTable(outputs []*module.Output, _ *config.Config, theme *ThemePalette
 	return t.Render()
 }
 
-func renderCompact(outputs []*module.Output, _ *config.Config, theme *ThemePalette) string {
+func renderCompact(outputs []*module.Output, cfg *config.Config, theme *ThemePalette) string {
 	entries := flattenRows(outputs, theme)
+	if cfg.KeyStyle == "tree" {
+		entries = treeifyKeys(entries)
+	}
 	var lines []string
 	for _, e := range entries {
 		label := Paint(e.key, module.Muted, theme)
@@ -124,6 +131,62 @@ func renderCompact(outputs []*module.Output, _ *config.Config, theme *ThemePalet
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+// treeifyKeys transforms flat dotted keys into tree-structured display keys.
+// Keys without a dot prefix are kept as-is.
+// Keys sharing a prefix are grouped: the first gets a group header,
+// children get ├── / └── prefixes.
+func treeifyKeys(entries []struct{ key, value string }) []struct{ key, value string } {
+	type entry = struct{ key, value string }
+	var result []entry
+
+	// Group entries by their prefix (part before first dot)
+	i := 0
+	for i < len(entries) {
+		key := entries[i].key
+		dot := strings.Index(key, ".")
+		if dot < 0 {
+			// No dot — standalone key, keep as-is
+			result = append(result, entries[i])
+			i++
+			continue
+		}
+
+		// Find all entries with the same prefix
+		prefix := key[:dot]
+		groupStart := i
+		for i < len(entries) {
+			k := entries[i].key
+			d := strings.Index(k, ".")
+			if d < 0 || k[:d] != prefix {
+				break
+			}
+			i++
+		}
+		group := entries[groupStart:i]
+
+		if len(group) == 1 {
+			// Single entry with dot — keep flat
+			result = append(result, group[0])
+			continue
+		}
+
+		// Multiple entries — emit group header + tree children
+		result = append(result, entry{key: prefix, value: ""})
+		for j, e := range group {
+			child := e.key[dot+1:] // strip prefix + dot
+			var connector string
+			if j == len(group)-1 {
+				connector = "└── "
+			} else {
+				connector = "├── "
+			}
+			result = append(result, entry{key: connector + child, value: e.value})
+		}
+	}
+
+	return result
 }
 
 func renderSegments(segments []module.Segment, theme *ThemePalette) string {
