@@ -14,7 +14,7 @@ func Render(outputs []*module.Output, cfg *config.Config) string {
 	theme := GetTheme(cfg.Theme)
 
 	switch cfg.Format {
-	case "inline":
+	case config.FormatInline:
 		return renderInline(outputs, cfg, theme)
 	default:
 		return renderTable(outputs, cfg, theme)
@@ -102,7 +102,7 @@ func renderTable(outputs []*module.Output, cfg *config.Config, theme *ThemePalet
 		return ""
 	}
 
-	if cfg.KeyStyle == "tree" {
+	if cfg.KeyStyle == config.KeyStyleTree {
 		entries = treeifyKeys(entries)
 	}
 
@@ -111,7 +111,7 @@ func renderTable(outputs []*module.Output, cfg *config.Config, theme *ThemePalet
 		var label string
 		isGroupHeader := e.value == ""
 		isTopLevel := !strings.HasPrefix(e.key, "├") && !strings.HasPrefix(e.key, "└") && !strings.HasPrefix(e.key, "│")
-		if cfg.KeyStyle == "tree" && (isGroupHeader || isTopLevel) {
+		if cfg.KeyStyle == config.KeyStyleTree && (isGroupHeader || isTopLevel) {
 			label = PaintBold(e.key, module.Muted, theme)
 		} else {
 			label = Paint(e.key, module.Muted, theme)

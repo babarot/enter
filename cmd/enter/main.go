@@ -68,7 +68,7 @@ func main() {
 	cwd, _ := os.Getwd()
 
 	// trigger: on_cd — skip if directory hasn't changed
-	if cfg.Trigger == "on_cd" && lastDir != "" && lastDir == cwd {
+	if cfg.Trigger == config.TriggerOnCd && lastDir != "" && lastDir == cwd {
 		return
 	}
 
@@ -79,11 +79,11 @@ func main() {
 
 	// Module registry
 	moduleMap := map[string]module.Module{
-		"cwd":    &modules.CwdModule{},
-		"git":    &modules.GitModule{},
-		"kube":   &modules.KubeModule{},
-		"gcp":    &modules.GcpModule{},
-		"claude": &modules.ClaudeModule{},
+		config.ModuleCwd:    &modules.CwdModule{},
+		config.ModuleGit:    &modules.GitModule{},
+		config.ModuleKube:   &modules.KubeModule{},
+		config.ModuleGcp:    &modules.GcpModule{},
+		config.ModuleClaude: &modules.ClaudeModule{},
 	}
 
 	// Order modules based on config

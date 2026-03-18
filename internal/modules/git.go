@@ -9,12 +9,13 @@ import (
 
 	"github.com/charmbracelet/lipgloss/tree"
 
+	"github.com/babarot/enter/internal/config"
 	"github.com/babarot/enter/internal/module"
 )
 
 type GitModule struct{}
 
-func (m *GitModule) Name() string { return "git" }
+func (m *GitModule) Name() string { return config.ModuleGit }
 
 type gitInfo struct {
 	branch    string
@@ -168,7 +169,7 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 
 func getGitStatusSegments(cwd, style string) []module.Segment {
 	switch style {
-	case "long":
+	case config.GitStatusStyleLong:
 		return getGitStatusLong(cwd)
 	default:
 		return getGitStatusShort(cwd)
@@ -558,9 +559,9 @@ func formatTree(repoRoot, relPath, style string) string {
 	parts := strings.Split(relPath, "/")
 
 	switch style {
-	case "tree":
+	case config.GitCwdStyleTree:
 		return formatLipglossTree(rootName, parts)
-	default: // "breadcrumb"
+	default: // config.GitCwdStyleBreadcrumb
 		all := append([]string{"/" + rootName}, parts...)
 		return strings.Join(all, " → ")
 	}

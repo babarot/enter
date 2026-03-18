@@ -7,6 +7,77 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
+// Format
+const (
+	FormatTable  = "table"
+	FormatInline = "inline"
+)
+
+// Trigger
+const (
+	TriggerAlways = "always"
+	TriggerOnCd   = "on_cd"
+)
+
+// KeyStyle
+const (
+	KeyStyleTree = "tree"
+	KeyStyleFlat = "flat"
+)
+
+// CwdStyle
+const (
+	CwdStyleShort    = "short"
+	CwdStyleFull     = "full"
+	CwdStyleBasename = "basename"
+	CwdStyleParent   = "parent"
+)
+
+// GitCwdStyle
+const (
+	GitCwdStyleTree       = "tree"
+	GitCwdStyleBreadcrumb = "breadcrumb"
+)
+
+// GitStatusStyle
+const (
+	GitStatusStyleShort = "short"
+	GitStatusStyleLong  = "long"
+)
+
+// ClaudeMode
+const (
+	ClaudeModeAuto   = "auto"
+	ClaudeModeAlways = "always"
+)
+
+// BarStyle
+const (
+	BarStyleBlock = "block"
+	BarStyleDot   = "dot"
+	BarStyleFill  = "fill"
+)
+
+// TimeStyle
+const (
+	TimeStyleAbsolute = "absolute"
+	TimeStyleRelative = "relative"
+)
+
+// Module names
+const (
+	ModuleCwd    = "cwd"
+	ModuleGit    = "git"
+	ModuleKube   = "kube"
+	ModuleGcp    = "gcp"
+	ModuleClaude = "claude"
+)
+
+// Theme
+const (
+	ThemeDefault = "default"
+)
+
 type Config struct {
 	Theme        string        `yaml:"theme"`
 	Format       string        `yaml:"format"`
@@ -100,28 +171,28 @@ type ClaudeConfigView struct {
 	Mode    string `yaml:"mode"` // "always" | "auto"
 }
 
-var DefaultModuleOrder = []string{"cwd", "git", "kube", "gcp", "claude"}
+var DefaultModuleOrder = []string{ModuleCwd, ModuleGit, ModuleKube, ModuleGcp, ModuleClaude}
 
 func Default() *Config {
 	return &Config{
-		Theme:       "default",
-		Format:      "table",
+		Theme:       ThemeDefault,
+		Format:      FormatTable,
 		Separator:   " │ ",
-		Trigger:     "always",
-		KeyStyle:    "tree",
+		Trigger:     TriggerAlways,
+		KeyStyle:    KeyStyleTree,
 		ModuleOrder: DefaultModuleOrder,
 		Modules: ModulesConfig{
 			Cwd: CwdConfig{
 				Enabled: true,
-				Style:   "short",
+				Style:   CwdStyleShort,
 			},
 			Git: GitConfig{
 				Enabled:   true,
 				Indicator: true,
 				Url:       GitUrlConfig{Enabled: true},
-				Cwd:       GitCwdConfig{Enabled: true, Style: "tree"},
+				Cwd:       GitCwdConfig{Enabled: true, Style: GitCwdStyleTree},
 				Summary:   GitSummaryConfig{Symbols: DefaultGitSymbols()},
-				Status:    GitStatusConfig{Enabled: true, Style: "short"},
+				Status:    GitStatusConfig{Enabled: true, Style: GitStatusStyleShort},
 			},
 			Kube: KubeConfig{
 				Enabled: false,
@@ -132,15 +203,15 @@ func Default() *Config {
 			},
 			Claude: ClaudeConfig{
 				Enabled: true,
-				Mode:    "auto",
+				Mode:    ClaudeModeAuto,
 				Usage: ClaudeUsageConfig{
-					BarStyle:  "block",
-					TimeStyle: "absolute",
+					BarStyle:  BarStyleBlock,
+					TimeStyle: TimeStyleAbsolute,
 					CacheTTL:  120,
 				},
 				Config: ClaudeConfigView{
 					Enabled: true,
-					Mode:    "auto",
+					Mode:    ClaudeModeAuto,
 				},
 			},
 		},
@@ -216,34 +287,34 @@ func Load(path string) *Config {
 func (c *Config) validate() {
 	d := Default()
 
-	if c.Format != "table" && c.Format != "inline" {
+	if c.Format != FormatTable && c.Format != FormatInline {
 		c.Format = d.Format
 	}
-	if c.Trigger != "always" && c.Trigger != "on_cd" {
+	if c.Trigger != TriggerAlways && c.Trigger != TriggerOnCd {
 		c.Trigger = d.Trigger
 	}
-	if c.KeyStyle != "flat" && c.KeyStyle != "tree" {
+	if c.KeyStyle != KeyStyleFlat && c.KeyStyle != KeyStyleTree {
 		c.KeyStyle = d.KeyStyle
 	}
 
 	gitCwd := &c.Modules.Git.Cwd
-	if gitCwd.Style != "breadcrumb" && gitCwd.Style != "tree" {
+	if gitCwd.Style != GitCwdStyleBreadcrumb && gitCwd.Style != GitCwdStyleTree {
 		gitCwd.Style = d.Modules.Git.Cwd.Style
 	}
 	gitStatus := &c.Modules.Git.Status
-	if gitStatus.Style != "short" && gitStatus.Style != "long" {
+	if gitStatus.Style != GitStatusStyleShort && gitStatus.Style != GitStatusStyleLong {
 		gitStatus.Style = d.Modules.Git.Status.Style
 	}
 
 	cl := &c.Modules.Claude
-	if cl.Mode != "always" && cl.Mode != "auto" {
+	if cl.Mode != ClaudeModeAlways && cl.Mode != ClaudeModeAuto {
 		cl.Mode = d.Modules.Claude.Mode
 	}
 	usage := &cl.Usage
-	if usage.BarStyle != "block" && usage.BarStyle != "dot" && usage.BarStyle != "fill" {
+	if usage.BarStyle != BarStyleBlock && usage.BarStyle != BarStyleDot && usage.BarStyle != BarStyleFill {
 		usage.BarStyle = d.Modules.Claude.Usage.BarStyle
 	}
-	if usage.TimeStyle != "absolute" && usage.TimeStyle != "relative" {
+	if usage.TimeStyle != TimeStyleAbsolute && usage.TimeStyle != TimeStyleRelative {
 		usage.TimeStyle = d.Modules.Claude.Usage.TimeStyle
 	}
 	if usage.CacheTTL <= 0 {
