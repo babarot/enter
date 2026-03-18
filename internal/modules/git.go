@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss/tree"
+
 	"github.com/babarot/enter/internal/module"
 )
 
@@ -24,6 +26,10 @@ type gitInfo struct {
 	ahead     int
 	behind    int
 	operation string
+	repoSlug  string // "owner/repo"
+	repoURL   string // "https://github.com/owner/repo"
+	repoRoot  string // absolute path to repo root
+	relPath   string // cwd relative to repo root (empty = at root)
 }
 
 func (m *GitModule) Run(ctx *module.Context) *module.Output {
@@ -31,21 +37,34 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 		return nil
 	}
 
+	gitCfg := &ctx.Config.Modules.Git
+
+	// show_indicator: show whether we're in a git repo
 	info := getGitInfo(ctx.Cwd)
-	if info == nil || info.branch == "" {
+	if info == nil {
+		if gitCfg.ShowIndicator {
+			return &module.Output{
+				Name:     m.Name(),
+				Segments: []module.Segment{module.NewSegment("not a git repo", module.Muted)},
+			}
+		}
+		return nil
+	}
+	if info.branch == "" {
 		return nil
 	}
 
-	symbols := &ctx.Config.Modules.Git.Symbols
-	var segments []module.Segment
+	symbols := &gitCfg.Symbols
 
+	// Build status segments: (branch *+$% ↑1↓2|REBASE)
 	branchColor := module.Success
 	if info.detached {
 		branchColor = module.Danger
 	}
 
-	segments = append(segments, module.NewSegment("(", branchColor))
-	segments = append(segments, module.NewSegment(info.branch, branchColor))
+	var statusSegs []module.Segment
+	statusSegs = append(statusSegs, module.NewSegment("(", branchColor))
+	statusSegs = append(statusSegs, module.NewSegment(info.branch, branchColor))
 
 	// State flags
 	var flags []module.Segment
@@ -62,8 +81,8 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 		flags = append(flags, module.NewSegment(symbols.Untracked, module.Danger))
 	}
 	if len(flags) > 0 {
-		segments = append(segments, module.Plain(" "))
-		segments = append(segments, flags...)
+		statusSegs = append(statusSegs, module.Plain(" "))
+		statusSegs = append(statusSegs, flags...)
 	}
 
 	// Ahead/behind
@@ -77,25 +96,64 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 			fmt.Sprintf("%s%d", symbols.Behind, info.behind), module.Danger))
 	}
 	if len(upstream) > 0 {
-		segments = append(segments, module.Plain(" "))
+		statusSegs = append(statusSegs, module.Plain(" "))
 		for i, seg := range upstream {
 			if i > 0 {
-				segments = append(segments, module.Plain(" "))
+				statusSegs = append(statusSegs, module.Plain(" "))
 			}
-			segments = append(segments, seg)
+			statusSegs = append(statusSegs, seg)
 		}
 	}
 
 	// Operation
 	if info.operation != "" {
-		segments = append(segments, module.NewSegment("|"+info.operation, module.Accent))
+		statusSegs = append(statusSegs, module.NewSegment("|"+info.operation, module.Accent))
 	}
 
-	segments = append(segments, module.NewSegment(")", branchColor))
+	statusSegs = append(statusSegs, module.NewSegment(")", branchColor))
+
+	// Build cwd segments (show current position in repo)
+	var cwdSegs []module.Segment
+	if gitCfg.ShowTree {
+		cwdText := formatTree(info.repoRoot, info.relPath, gitCfg.TreeStyle)
+		cwdSegs = append(cwdSegs, module.NewSegment(cwdText, module.Muted))
+	}
+
+	// Build inline segments (all in one line)
+	var segments []module.Segment
+	if gitCfg.ShowRepo && info.repoURL != "" {
+		segments = append(segments, module.NewSegment(info.repoURL, module.Primary))
+		segments = append(segments, module.Plain(" "))
+	}
+	segments = append(segments, statusSegs...)
+	if len(cwdSegs) > 0 {
+		segments = append(segments, module.Plain(" "))
+		segments = append(segments, cwdSegs...)
+	}
+
+	// Build rows for table/compact formats
+	var rows []module.Row
+	if gitCfg.ShowRepo && info.repoURL != "" {
+		rows = append(rows, module.Row{
+			Key:      "git.url",
+			Segments: []module.Segment{module.NewSegment(info.repoURL, module.Primary)},
+		})
+	}
+	rows = append(rows, module.Row{
+		Key:      "git.status",
+		Segments: statusSegs,
+	})
+	if gitCfg.ShowTree {
+		rows = append(rows, module.Row{
+			Key:      "git.cwd",
+			Segments: cwdSegs,
+		})
+	}
 
 	return &module.Output{
 		Name:     m.Name(),
 		Segments: segments,
+		Rows:     rows,
 	}
 }
 
@@ -193,6 +251,19 @@ func getGitInfo(cwd string) *gitInfo {
 		return nil
 	}
 
+	// Get remote URL for repo slug
+	if remoteURL, ok := execGit(cwd, "remote", "get-url", "origin"); ok {
+		info.repoSlug, info.repoURL = parseRemoteURL(remoteURL)
+	}
+
+	// Get repo root and relative path
+	if toplevel, ok := execGit(cwd, "rev-parse", "--show-toplevel"); ok {
+		info.repoRoot = toplevel
+		if cwd != toplevel && strings.HasPrefix(cwd, toplevel+"/") {
+			info.relPath = cwd[len(toplevel)+1:]
+		}
+	}
+
 	return info
 }
 
@@ -268,4 +339,110 @@ func fileExists(path string) bool {
 func isDir(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()
+}
+
+// parseRemoteURL extracts "owner/repo" and HTTPS URL from a git remote URL.
+// Supports:
+//   - git@github.com:owner/repo.git
+//   - ssh://git@ssh.github.com:443/owner/repo.git
+//   - https://github.com/owner/repo.git
+func parseRemoteURL(raw string) (slug, httpURL string) {
+	raw = strings.TrimSpace(raw)
+
+	// SSH with explicit scheme: ssh://git@ssh.github.com:443/owner/repo.git
+	if strings.HasPrefix(raw, "ssh://") {
+		// Remove scheme
+		after := strings.TrimPrefix(raw, "ssh://")
+		// Remove user@ prefix
+		if idx := strings.Index(after, "@"); idx >= 0 {
+			after = after[idx+1:]
+		}
+		// Split host(:port) and path
+		// ssh.github.com:443/owner/repo.git -> find first /
+		if slashIdx := strings.Index(after, "/"); slashIdx >= 0 {
+			host := after[:slashIdx]
+			path := after[slashIdx+1:]
+			path = strings.TrimSuffix(path, ".git")
+			slug = path
+			// Normalize host: ssh.github.com -> github.com
+			host = strings.TrimPrefix(host, "ssh.")
+			// Remove port
+			if colonIdx := strings.Index(host, ":"); colonIdx >= 0 {
+				host = host[:colonIdx]
+			}
+			httpURL = fmt.Sprintf("https://%s/%s", host, path)
+			return
+		}
+	}
+
+	// SCP-style SSH: git@github.com:owner/repo.git
+	if strings.HasPrefix(raw, "git@") {
+		after := strings.TrimPrefix(raw, "git@")
+		if host, path, ok := strings.Cut(after, ":"); ok {
+			path = strings.TrimSuffix(path, ".git")
+			slug = path
+			httpURL = fmt.Sprintf("https://%s/%s", host, path)
+			return
+		}
+	}
+
+	// HTTPS/HTTP
+	if strings.HasPrefix(raw, "https://") || strings.HasPrefix(raw, "http://") {
+		trimmed := strings.TrimSuffix(raw, ".git")
+		// Extract last two path segments as owner/repo
+		parts := strings.Split(trimmed, "/")
+		if len(parts) >= 2 {
+			slug = parts[len(parts)-2] + "/" + parts[len(parts)-1]
+			httpURL = trimmed
+			return
+		}
+	}
+
+	return "", ""
+}
+
+// formatTree renders the current position within the repo.
+// repoRoot: absolute path to repo root
+// relPath: relative path from root to cwd (e.g. "cmd/enter")
+// style: "breadcrumb" or "tree"
+func formatTree(repoRoot, relPath, style string) string {
+	rootName := filepath.Base(repoRoot)
+
+	// At repo root
+	if relPath == "" {
+		return "/"
+	}
+
+	parts := strings.Split(relPath, "/")
+
+	switch style {
+	case "tree":
+		return formatLipglossTree(rootName, parts)
+	default: // "breadcrumb"
+		all := append([]string{"/" + rootName}, parts...)
+		return strings.Join(all, " → ")
+	}
+}
+
+func formatLipglossTree(rootName string, parts []string) string {
+	// enter
+	// └── cmd
+	//     └── enter  ← here
+
+	// Build from innermost to outermost
+	var inner any
+	for i := len(parts) - 1; i >= 0; i-- {
+		label := parts[i]
+		if i == len(parts)-1 {
+			label = label + "  ← here"
+		}
+		if inner == nil {
+			inner = tree.Root(label)
+		} else {
+			inner = tree.Root(label).Child(inner)
+		}
+	}
+
+	t := tree.Root("/" + rootName).Child(inner)
+	return t.String()
 }

@@ -27,8 +27,12 @@ type PwdConfig struct {
 }
 
 type GitConfig struct {
-	Enabled bool       `yaml:"enabled"`
-	Symbols GitSymbols `yaml:"symbols"`
+	Enabled       bool       `yaml:"enabled"`
+	ShowRepo      bool       `yaml:"show_repo"`
+	ShowIndicator bool       `yaml:"show_indicator"`
+	ShowTree      bool       `yaml:"show_tree"`
+	TreeStyle     string     `yaml:"tree_style"` // "breadcrumb" | "tree"
+	Symbols       GitSymbols `yaml:"symbols"`
 }
 
 type GitSymbols struct {
@@ -61,8 +65,12 @@ func Default() *Config {
 				Style:   "parent",
 			},
 			Git: GitConfig{
-				Enabled: true,
-				Symbols: DefaultGitSymbols(),
+				Enabled:       true,
+				ShowRepo:      false,
+				ShowIndicator: false,
+				ShowTree:      false,
+				TreeStyle:     "breadcrumb",
+				Symbols:       DefaultGitSymbols(),
 			},
 			Kube: KubeConfig{
 				Enabled: false,
@@ -146,6 +154,10 @@ modules:
 
   git:
     enabled: true
+    show_repo: false        # show repository URL
+    show_indicator: false   # show whether in a git repo
+    show_tree: false        # show current position in repo
+    tree_style: "breadcrumb" # breadcrumb | tree
     symbols:
       unstaged: "*"
       staged: "+"

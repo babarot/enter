@@ -28,9 +28,16 @@ func Plain(text string) Segment {
 	return Segment{Text: text, Color: Default}
 }
 
+// Row is a key-value pair for structured output (table/compact formats).
+type Row struct {
+	Key      string
+	Segments []Segment
+}
+
 type Output struct {
 	Name     string
-	Segments []Segment
+	Segments []Segment // used for inline format
+	Rows     []Row     // used for table/compact formats (optional)
 }
 
 type Context struct {

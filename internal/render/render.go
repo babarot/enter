@@ -37,18 +37,39 @@ func renderInline(outputs []*module.Output, cfg *config.Config, theme *ThemePale
 	return strings.Join(parts, sep)
 }
 
-func renderTable(outputs []*module.Output, _ *config.Config, theme *ThemePalette) string {
-	var rows [][]string
+// flattenRows expands outputs into key-value pairs.
+// If a module has Rows, each row becomes a separate entry.
+// Otherwise, the module's Name + Segments become a single entry.
+func flattenRows(outputs []*module.Output, theme *ThemePalette) []struct{ key, value string } {
+	var result []struct{ key, value string }
 	for _, out := range outputs {
-		label := Paint(out.Name, module.Muted, theme)
-		value := renderSegments(out.Segments, theme)
-		if value != "" {
-			rows = append(rows, []string{label, value})
+		if len(out.Rows) > 0 {
+			for _, row := range out.Rows {
+				value := renderSegments(row.Segments, theme)
+				if value != "" {
+					result = append(result, struct{ key, value string }{row.Key, value})
+				}
+			}
+		} else {
+			value := renderSegments(out.Segments, theme)
+			if value != "" {
+				result = append(result, struct{ key, value string }{out.Name, value})
+			}
 		}
 	}
+	return result
+}
 
-	if len(rows) == 0 {
+func renderTable(outputs []*module.Output, _ *config.Config, theme *ThemePalette) string {
+	entries := flattenRows(outputs, theme)
+	if len(entries) == 0 {
 		return ""
+	}
+
+	var rows [][]string
+	for _, e := range entries {
+		label := Paint(e.key, module.Muted, theme)
+		rows = append(rows, []string{label, e.value})
 	}
 
 	borderColor := lipgloss.Color(toHex(theme.Muted))
@@ -67,14 +88,11 @@ func renderTable(outputs []*module.Output, _ *config.Config, theme *ThemePalette
 }
 
 func renderCompact(outputs []*module.Output, _ *config.Config, theme *ThemePalette) string {
+	entries := flattenRows(outputs, theme)
 	var lines []string
-	for _, out := range outputs {
-		value := renderSegments(out.Segments, theme)
-		if value == "" {
-			continue
-		}
-		label := Paint(out.Name, module.Muted, theme)
-		lines = append(lines, label+"  "+value)
+	for _, e := range entries {
+		label := Paint(e.key, module.Muted, theme)
+		lines = append(lines, label+"  "+e.value)
 	}
 
 	return strings.Join(lines, "\n")
