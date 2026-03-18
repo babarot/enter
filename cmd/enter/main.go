@@ -73,6 +73,7 @@ func main() {
 		&modules.GitModule{},
 		&modules.KubeModule{},
 		&modules.GcpModule{},
+		&modules.ClaudeModule{},
 	}
 
 	// Run all modules in parallel

@@ -3,7 +3,15 @@
 Show contextual info every time you press Enter in your shell.
 
 ```
-babarot/enter │ (main *%) │ ⎈ prod-cluster │ ☁ my-project
+╭───────────────┬──────────────────────────────────────────╮
+│pwd            │ ~/s/g/babarot/project                    │
+│git.url        │ https://github.com/babarot/project       │
+│git.sign       │ (main *%)                                │
+│git.cwd        │ /                                        │
+│git.status     │ M  internal/modules/git.go               │
+│claude.current │ ▰▱▱▱▱▱▱▱▱▱  14% ⟳ 3:00pm                │
+│claude.weekly  │ ▰▱▱▱▱▱▱▱▱▱  14% ⟳ Mar 19, 2:00pm        │
+╰───────────────┴──────────────────────────────────────────╯
 ```
 
 ## Install
@@ -65,10 +73,10 @@ enter --init-config
 theme: "default"
 
 # Display format:
-#   inline  - single line with separator (default)
-#   table   - bordered table with labeled rows
+#   table   - bordered table with labeled rows (default)
+#   inline  - single line with separator
 #   compact - multi-line with labels, no border
-format: "inline"
+format: "table"
 
 # Separator between segments in inline format
 separator: " │ "
@@ -79,11 +87,11 @@ modules:
     enabled: true
 
     # Path display style:
+    #   short    - "~/s/g/babarot/enter" (abbreviated, keep last 2)
     #   parent   - "babarot/enter" (parent + basename)
     #   full     - "~/src/github.com/babarot/enter"
-    #   short    - "~/s/g/b/enter" (abbreviated)
     #   basename - "enter"
-    style: "parent"
+    style: "short"
 
   # ── git ──────────────────────────────────────────
   git:
@@ -92,27 +100,27 @@ modules:
     # Show the repository HTTPS URL (parsed from remote origin)
     # Supports: git@, ssh://, https:// remote formats
     # Table/compact key: git.url
-    show_repo: false
+    show_repo: true
 
     # Show "not a git repo" when outside a git repository
-    show_indicator: false
+    show_indicator: true
 
     # Show current position within the repository
     # Table/compact key: git.cwd
     # At repo root: "/"
     # In subdirectory: depends on tree_style
-    show_tree: false
+    show_tree: true
 
     # Show git status output
     # Table/compact key: git.status
     # Color-coded: M=yellow, A=green, D=red, ??=muted (short)
     #              Section-based coloring (long)
-    show_status: false
+    show_status: true
 
     # How to display the repo position:
-    #   breadcrumb - "/enter → cmd → enter"
     #   tree       - tree visualization with └── branches
-    tree_style: "breadcrumb"
+    #   breadcrumb - "/enter → cmd → enter"
+    tree_style: "tree"
 
     # Git status output format:
     #   short - "M  file.go" (git status --short)
@@ -149,36 +157,72 @@ modules:
     # 1. $CLOUDSDK_CORE_PROJECT
     # 2. ~/.config/gcloud/properties [core] project
     # 3. ~/.config/gcloud/active_config → config_{name}
+
+  # ── claude ───────────────────────────────────────
+  claude:
+    enabled: true
+
+    # When to show Claude Code usage:
+    #   auto   - show when .claude/ or CLAUDE.md exists (in cwd or git root)
+    #   always - always show
+    mode: "auto"
+
+    # Progress bar style:
+    #   block - ▰▱ (default)
+    #   dot   - ●○
+    #   fill  - █░
+    bar_style: "block"
+
+    # Reset time display:
+    #   absolute - "3:00pm", "Mar 19, 2:00pm"
+    #   relative - "22m left", "3h 15m left"
+    time_style: "absolute"
+
+    # API response cache duration in seconds
+    cache_ttl: 120
+
+    # OAuth token resolution order:
+    # 1. $CLAUDE_CODE_OAUTH_TOKEN
+    # 2. macOS Keychain (Claude Code-credentials)
+    # 3. ~/.claude/.credentials.json
 ```
 
 ### Display Formats
 
-**inline** (default):
+**table** (default):
 
 ```
-babarot/enter │ (main *%)
+╭───────────────┬──────────────────────────────────────────╮
+│pwd            │ ~/s/g/babarot/enter                      │
+│git.url        │ https://github.com/babarot/enter         │
+│git.sign       │ (main *%)                                │
+│git.cwd        │ /                                        │
+│git.status     │ ╭───────────────────────────────╮        │
+│               │ │ M  internal/modules/git.go    │        │
+│               │ │ ?? internal/modules/claude.go │        │
+│               │ ╰───────────────────────────────╯        │
+│claude.current │ ▰▱▱▱▱▱▱▱▱▱  14% ⟳ 3:00pm                │
+│claude.weekly  │ ▰▱▱▱▱▱▱▱▱▱  14% ⟳ Mar 19, 2:00pm        │
+╰───────────────┴──────────────────────────────────────────╯
 ```
 
-**table**:
+Multiline values (git.status, git.cwd tree) are automatically wrapped in nested boxes.
+
+**inline**:
 
 ```
-╭───────────┬─────────────────────────────────╮
-│pwd        │ babarot/enter                   │
-│git.url    │ https://github.com/babarot/enter│
-│git.sign   │ (main *%)                       │
-│git.cwd    │ /                               │
-│git.status │ M  internal/modules/git.go      │
-╰───────────┴─────────────────────────────────╯
+~/s/g/babarot/enter │ (main *%) │ current ▰▱▱▱▱▱▱▱▱▱ 14% ⟳ 3:00pm | weekly ▰▱▱▱▱▱▱▱▱▱ 14% ⟳ Mar 19, 2:00pm
 ```
 
 **compact**:
 
 ```
-pwd        babarot/enter
-git.url    https://github.com/babarot/enter
-git.sign   (main *%)
-git.cwd    /
-git.status M  internal/modules/git.go
+pwd              ~/s/g/babarot/enter
+git.url          https://github.com/babarot/enter
+git.sign         (main *%)
+git.cwd          /
+claude.current   ▰▱▱▱▱▱▱▱▱▱  14% ⟳ 3:00pm
+claude.weekly    ▰▱▱▱▱▱▱▱▱▱  14% ⟳ Mar 19, 2:00pm
 ```
 
 ### Table/Compact Row Keys
@@ -192,6 +236,8 @@ git.status M  internal/modules/git.go
 | `git.status` | `show_status: true` | git status output (short or long) |
 | `kube` | kube module | Kubernetes current-context |
 | `gcp` | gcp module | GCP project |
+| `claude.current` | claude module | 5-hour usage window with progress bar |
+| `claude.weekly` | claude module | 7-day usage window with progress bar |
 
 ### Themes
 
@@ -235,7 +281,8 @@ internal/
     ├── pwd.go           Current directory
     ├── git.go           Git status, repo URL, tree, status output
     ├── kube.go          Kubernetes context
-    └── gcp.go           GCP project
+    ├── gcp.go           GCP project
+    └── claude.go        Claude Code API usage (current/weekly)
 ```
 
 All modules run in parallel using goroutines. Each module returns `nil` if disabled or has nothing to display.

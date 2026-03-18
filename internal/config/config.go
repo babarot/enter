@@ -15,10 +15,11 @@ type Config struct {
 }
 
 type ModulesConfig struct {
-	Pwd  PwdConfig  `yaml:"pwd"`
-	Git  GitConfig  `yaml:"git"`
-	Kube KubeConfig `yaml:"kube"`
-	Gcp  GcpConfig  `yaml:"gcp"`
+	Pwd    PwdConfig    `yaml:"pwd"`
+	Git    GitConfig    `yaml:"git"`
+	Kube   KubeConfig   `yaml:"kube"`
+	Gcp    GcpConfig    `yaml:"gcp"`
+	Claude ClaudeConfig `yaml:"claude"`
 }
 
 type PwdConfig struct {
@@ -56,6 +57,14 @@ type GcpConfig struct {
 	Symbol  string `yaml:"symbol"`
 }
 
+type ClaudeConfig struct {
+	Enabled   bool   `yaml:"enabled"`
+	Mode      string `yaml:"mode"`        // "always" | "auto"
+	BarStyle  string `yaml:"bar_style"`   // "block" | "dot" | "fill"
+	TimeStyle string `yaml:"time_style"`  // "absolute" | "relative"
+	CacheTTL  int    `yaml:"cache_ttl"`   // seconds
+}
+
 func Default() *Config {
 	return &Config{
 		Theme:     "default",
@@ -83,6 +92,13 @@ func Default() *Config {
 			Gcp: GcpConfig{
 				Enabled: false,
 				Symbol:  "☁",
+			},
+			Claude: ClaudeConfig{
+				Enabled:   true,
+				Mode:      "auto",
+				BarStyle:  "block",
+				TimeStyle: "absolute",
+				CacheTTL:  120,
 			},
 		},
 	}
@@ -179,5 +195,12 @@ modules:
   gcp:
     enabled: false
     # symbol: "☁"
+
+  claude:
+    enabled: true
+    mode: "auto"            # always | auto
+    bar_style: "block"      # block (▰▱) | dot (●○) | fill (█░)
+    time_style: "absolute"  # absolute (3:00pm) | relative (22m left)
+    cache_ttl: 120          # cache duration in seconds
 `
 }
