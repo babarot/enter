@@ -33,15 +33,30 @@ type CwdConfig struct {
 }
 
 type GitConfig struct {
-	Enabled       bool       `yaml:"enabled"`
-	ShowRepo      bool       `yaml:"show_repo"`
-	ShowIndicator bool       `yaml:"show_indicator"`
-	ShowTree      bool       `yaml:"show_tree"`
-	ShowStatus    bool       `yaml:"show_status"`
-	TreeStyle     string     `yaml:"tree_style"`   // "breadcrumb" | "tree"
-	StatusStyle   string     `yaml:"status_style"`  // "short" | "long"
-	Order         []string   `yaml:"order"`
-	Symbols       GitSymbols `yaml:"symbols"`
+	Enabled   bool           `yaml:"enabled"`
+	Indicator bool           `yaml:"indicator"`
+	Url       GitUrlConfig   `yaml:"url"`
+	Cwd       GitCwdConfig   `yaml:"cwd"`
+	Sign      GitSignConfig  `yaml:"sign"`
+	Status    GitStatusConfig `yaml:"status"`
+}
+
+type GitUrlConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+type GitCwdConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Style   string `yaml:"style"` // "breadcrumb" | "tree"
+}
+
+type GitSignConfig struct {
+	Symbols GitSymbols `yaml:"symbols"`
+}
+
+type GitStatusConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Style   string `yaml:"style"` // "short" | "long"
 }
 
 type GitSymbols struct {
@@ -55,25 +70,26 @@ type GitSymbols struct {
 
 type KubeConfig struct {
 	Enabled      bool     `yaml:"enabled"`
-	Symbol       string   `yaml:"symbol"`
 	CleanContext bool     `yaml:"clean_context"` // strip cloud provider prefixes from context name
 	Order        []string `yaml:"order"`
 }
 
 type GcpConfig struct {
 	Enabled bool     `yaml:"enabled"`
-	Symbol  string   `yaml:"symbol"`
 	Order   []string `yaml:"order"`
 }
 
 type ClaudeConfig struct {
-	Enabled    bool              `yaml:"enabled"`
-	Mode       string            `yaml:"mode"`         // "always" | "auto"
-	BarStyle   string            `yaml:"bar_style"`    // "block" | "dot" | "fill"
-	TimeStyle  string            `yaml:"time_style"`   // "absolute" | "relative"
-	CacheTTL   int               `yaml:"cache_ttl"`    // seconds
-	Order      []string          `yaml:"order"`
-	ConfigView ClaudeConfigView  `yaml:"config_view"`
+	Enabled bool               `yaml:"enabled"`
+	Mode    string             `yaml:"mode"`   // "always" | "auto"
+	Usage   ClaudeUsageConfig  `yaml:"usage"`
+	Config  ClaudeConfigView   `yaml:"config"`
+}
+
+type ClaudeUsageConfig struct {
+	BarStyle  string `yaml:"bar_style"`  // "block" | "dot" | "fill"
+	TimeStyle string `yaml:"time_style"` // "absolute" | "relative"
+	CacheTTL  int    `yaml:"cache_ttl"`  // seconds
 }
 
 type ClaudeConfigView struct {
@@ -97,31 +113,29 @@ func Default() *Config {
 				Style:   "short",
 			},
 			Git: GitConfig{
-				Enabled:       true,
-				ShowRepo:      true,
-				ShowIndicator: true,
-				ShowTree:      true,
-				ShowStatus:    true,
-				TreeStyle:     "tree",
-				StatusStyle:   "short",
-				Symbols:       DefaultGitSymbols(),
+				Enabled:   true,
+				Indicator: true,
+				Url:       GitUrlConfig{Enabled: true},
+				Cwd:       GitCwdConfig{Enabled: true, Style: "tree"},
+				Sign:      GitSignConfig{Symbols: DefaultGitSymbols()},
+				Status:    GitStatusConfig{Enabled: true, Style: "short"},
 			},
 			Kube: KubeConfig{
 				Enabled:      false,
-				Symbol:       "⎈",
 				CleanContext: true,
 			},
 			Gcp: GcpConfig{
 				Enabled: false,
-				Symbol:  "☁",
 			},
 			Claude: ClaudeConfig{
-				Enabled:   true,
-				Mode:      "auto",
-				BarStyle:  "block",
-				TimeStyle: "absolute",
-				CacheTTL:  120,
-				ConfigView: ClaudeConfigView{
+				Enabled: true,
+				Mode:    "auto",
+				Usage: ClaudeUsageConfig{
+					BarStyle:  "block",
+					TimeStyle: "absolute",
+					CacheTTL:  120,
+				},
+				Config: ClaudeConfigView{
 					Enabled: true,
 					Mode:    "auto",
 				},
@@ -173,23 +187,24 @@ func Load(path string) *Config {
 
 	// Fill empty symbols with defaults
 	defaults := DefaultGitSymbols()
-	if cfg.Modules.Git.Symbols.Unstaged == "" {
-		cfg.Modules.Git.Symbols.Unstaged = defaults.Unstaged
+	sym := &cfg.Modules.Git.Sign.Symbols
+	if sym.Unstaged == "" {
+		sym.Unstaged = defaults.Unstaged
 	}
-	if cfg.Modules.Git.Symbols.Staged == "" {
-		cfg.Modules.Git.Symbols.Staged = defaults.Staged
+	if sym.Staged == "" {
+		sym.Staged = defaults.Staged
 	}
-	if cfg.Modules.Git.Symbols.Stash == "" {
-		cfg.Modules.Git.Symbols.Stash = defaults.Stash
+	if sym.Stash == "" {
+		sym.Stash = defaults.Stash
 	}
-	if cfg.Modules.Git.Symbols.Untracked == "" {
-		cfg.Modules.Git.Symbols.Untracked = defaults.Untracked
+	if sym.Untracked == "" {
+		sym.Untracked = defaults.Untracked
 	}
-	if cfg.Modules.Git.Symbols.Ahead == "" {
-		cfg.Modules.Git.Symbols.Ahead = defaults.Ahead
+	if sym.Ahead == "" {
+		sym.Ahead = defaults.Ahead
 	}
-	if cfg.Modules.Git.Symbols.Behind == "" {
-		cfg.Modules.Git.Symbols.Behind = defaults.Behind
+	if sym.Behind == "" {
+		sym.Behind = defaults.Behind
 	}
 
 	return cfg
@@ -208,26 +223,28 @@ func (c *Config) validate() {
 		c.KeyStyle = d.KeyStyle
 	}
 
-	git := &c.Modules.Git
-	if git.TreeStyle != "breadcrumb" && git.TreeStyle != "tree" {
-		git.TreeStyle = d.Modules.Git.TreeStyle
+	gitCwd := &c.Modules.Git.Cwd
+	if gitCwd.Style != "breadcrumb" && gitCwd.Style != "tree" {
+		gitCwd.Style = d.Modules.Git.Cwd.Style
 	}
-	if git.StatusStyle != "short" && git.StatusStyle != "long" {
-		git.StatusStyle = d.Modules.Git.StatusStyle
+	gitStatus := &c.Modules.Git.Status
+	if gitStatus.Style != "short" && gitStatus.Style != "long" {
+		gitStatus.Style = d.Modules.Git.Status.Style
 	}
 
 	cl := &c.Modules.Claude
 	if cl.Mode != "always" && cl.Mode != "auto" {
 		cl.Mode = d.Modules.Claude.Mode
 	}
-	if cl.BarStyle != "block" && cl.BarStyle != "dot" && cl.BarStyle != "fill" {
-		cl.BarStyle = d.Modules.Claude.BarStyle
+	usage := &cl.Usage
+	if usage.BarStyle != "block" && usage.BarStyle != "dot" && usage.BarStyle != "fill" {
+		usage.BarStyle = d.Modules.Claude.Usage.BarStyle
 	}
-	if cl.TimeStyle != "absolute" && cl.TimeStyle != "relative" {
-		cl.TimeStyle = d.Modules.Claude.TimeStyle
+	if usage.TimeStyle != "absolute" && usage.TimeStyle != "relative" {
+		usage.TimeStyle = d.Modules.Claude.Usage.TimeStyle
 	}
-	if cl.CacheTTL <= 0 {
-		cl.CacheTTL = d.Modules.Claude.CacheTTL
+	if usage.CacheTTL <= 0 {
+		usage.CacheTTL = d.Modules.Claude.Usage.CacheTTL
 	}
 }
 
@@ -283,39 +300,40 @@ modules:
 
   git:
     enabled: true
-    # order: [url, cwd, sign, status]  # sub-key display order
-    show_repo: true         # show repository URL
-    show_indicator: true    # show whether in a git repo
-    show_tree: true         # show current position in repo
-    show_status: true       # show git status output
-    tree_style: "tree"      # breadcrumb | tree
-    status_style: "short"   # short | long
-    symbols:
-      unstaged: "*"
-      staged: "+"
-      stash: "$"
-      untracked: "%"
-      ahead: "↑"
-      behind: "↓"
+    indicator: true         # show "not a git repo" outside repos
+    url:
+      enabled: true
+    cwd:
+      enabled: true
+      style: "tree"         # breadcrumb | tree
+    sign:
+      symbols:
+        unstaged: "*"
+        staged: "+"
+        stash: "$"
+        untracked: "%"
+        ahead: "↑"
+        behind: "↓"
+    status:
+      enabled: true
+      style: "short"        # short | long
 
   kube:
     enabled: false
-    # symbol: "⎈"
     clean_context: true     # strip cloud provider prefixes (GKE/EKS/AKS)
 
   gcp:
     enabled: false
-    # symbol: "☁"
     # order: [project, account, region, config]  # sub-key display order
 
   claude:
     enabled: true
-    # order: [usage, config]  # sub-key display order
     mode: "auto"            # always | auto
-    bar_style: "block"      # block (▰▱) | dot (●○) | fill (█░)
-    time_style: "absolute"  # absolute (3:00pm) | relative (22m left)
-    cache_ttl: 120          # cache duration in seconds
-    config_view:
+    usage:
+      bar_style: "block"    # block (▰▱) | dot (●○) | fill (█░)
+      time_style: "absolute" # absolute (3:00pm) | relative (22m left)
+      cache_ttl: 120        # cache duration in seconds
+    config:
       enabled: true
       mode: "auto"          # always (show ✓/✗) | auto (show existing only)
 `

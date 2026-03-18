@@ -250,7 +250,7 @@ func TestGitModuleDisabled(t *testing.T) {
 func TestGitModuleNotARepo(t *testing.T) {
 	m := &GitModule{}
 	cfg := config.Default()
-	cfg.Modules.Git.ShowIndicator = false
+	cfg.Modules.Git.Indicator = false
 	ctx := &module.Context{Cwd: t.TempDir(), Config: cfg}
 
 	out := m.Run(ctx)
@@ -262,7 +262,7 @@ func TestGitModuleNotARepo(t *testing.T) {
 func TestGitModuleShowIndicator(t *testing.T) {
 	m := &GitModule{}
 	cfg := config.Default()
-	cfg.Modules.Git.ShowIndicator = true
+	cfg.Modules.Git.Indicator = true
 	ctx := &module.Context{Cwd: t.TempDir(), Config: cfg}
 
 	out := m.Run(ctx)
@@ -312,7 +312,7 @@ func TestGitModuleShowRepo(t *testing.T) {
 
 	m := &GitModule{}
 	cfg := config.Default()
-	cfg.Modules.Git.ShowRepo = true
+	cfg.Modules.Git.Url.Enabled = true
 	ctx := &module.Context{Cwd: dir, Config: cfg}
 
 	out := m.Run(ctx)
@@ -345,7 +345,7 @@ func TestGitModuleShowTree(t *testing.T) {
 
 	m := &GitModule{}
 	cfg := config.Default()
-	cfg.Modules.Git.ShowTree = true
+	cfg.Modules.Git.Cwd.Enabled = true
 	ctx := &module.Context{Cwd: subdir, Config: cfg}
 
 	out := m.Run(ctx)
@@ -371,7 +371,7 @@ func TestGitModuleShowStatus(t *testing.T) {
 
 	m := &GitModule{}
 	cfg := config.Default()
-	cfg.Modules.Git.ShowStatus = true
+	cfg.Modules.Git.Status.Enabled = true
 	ctx := &module.Context{Cwd: dir, Config: cfg}
 
 	out := m.Run(ctx)

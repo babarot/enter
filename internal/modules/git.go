@@ -39,10 +39,10 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 
 	gitCfg := &ctx.Config.Modules.Git
 
-	// show_indicator: show whether we're in a git repo
+	// indicator: show whether we're in a git repo
 	info := getGitInfo(ctx.Cwd)
 	if info == nil {
-		if gitCfg.ShowIndicator {
+		if gitCfg.Indicator {
 			return &module.Output{
 				Name:     m.Name(),
 				Segments: []module.Segment{module.NewSegment("not a git repo", module.Muted)},
@@ -54,7 +54,7 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 		return nil
 	}
 
-	symbols := &gitCfg.Symbols
+	symbols := &gitCfg.Sign.Symbols
 
 	// Build status segments: (branch *+$% ↑1↓2|REBASE)
 	branchColor := module.Success
@@ -114,14 +114,14 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 
 	// Build cwd segments (show current position in repo)
 	var cwdSegs []module.Segment
-	if gitCfg.ShowTree {
-		cwdText := formatTree(info.repoRoot, info.relPath, gitCfg.TreeStyle)
+	if gitCfg.Cwd.Enabled {
+		cwdText := formatTree(info.repoRoot, info.relPath, gitCfg.Cwd.Style)
 		cwdSegs = append(cwdSegs, module.NewSegment(cwdText, module.Muted))
 	}
 
 	// Build inline segments (all in one line)
 	var segments []module.Segment
-	if gitCfg.ShowRepo && info.repoURL != "" {
+	if gitCfg.Url.Enabled && info.repoURL != "" {
 		segments = append(segments, module.NewSegment(info.repoURL, module.Primary))
 		segments = append(segments, module.Plain(" "))
 	}
@@ -133,13 +133,13 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 
 	// Build rows for table format
 	var rows []module.Row
-	if gitCfg.ShowRepo && info.repoURL != "" {
+	if gitCfg.Url.Enabled && info.repoURL != "" {
 		rows = append(rows, module.Row{
 			Key:      "git.url",
 			Segments: []module.Segment{module.NewSegment(info.repoURL, module.Primary)},
 		})
 	}
-	if gitCfg.ShowTree {
+	if gitCfg.Cwd.Enabled {
 		rows = append(rows, module.Row{
 			Key:      "git.cwd",
 			Segments: cwdSegs,
@@ -149,8 +149,8 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 		Key:      "git.sign",
 		Segments: statusSegs,
 	})
-	if gitCfg.ShowStatus {
-		statusSegs := getGitStatusSegments(ctx.Cwd, gitCfg.StatusStyle)
+	if gitCfg.Status.Enabled {
+		statusSegs := getGitStatusSegments(ctx.Cwd, gitCfg.Status.Style)
 		if len(statusSegs) > 0 {
 			rows = append(rows, module.Row{
 				Key:      "git.status",
@@ -163,7 +163,6 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 		Name:     m.Name(),
 		Segments: segments,
 		Rows:     rows,
-		RowOrder: gitCfg.Order,
 	}
 }
 

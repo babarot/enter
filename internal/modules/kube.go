@@ -40,12 +40,8 @@ func (m *KubeModule) Run(ctx *module.Context) *module.Output {
 		displayContext = cleanContext(info.context)
 	}
 
-	symbol := ctx.Config.Modules.Kube.Symbol
-
-	// Inline: ⎈ context/namespace
+	// Inline: context/namespace
 	segments := []module.Segment{
-		module.NewSegment(symbol, module.Primary),
-		module.Plain(" "),
 		module.NewSegment(displayContext, module.Primary),
 		module.NewSegment("/"+info.namespace, module.Muted),
 	}

@@ -66,9 +66,11 @@ modules:
     style: "full"
   git:
     enabled: true
-    show_repo: true
-    symbols:
-      unstaged: "!"
+    url:
+      enabled: true
+    sign:
+      symbols:
+        unstaged: "!"
 `
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -87,15 +89,15 @@ modules:
 	if cfg.Modules.Cwd.Style != "full" {
 		t.Errorf("cwd style: got %q, want %q", cfg.Modules.Cwd.Style, "full")
 	}
-	if !cfg.Modules.Git.ShowRepo {
+	if !cfg.Modules.Git.Url.Enabled {
 		t.Error("git show_repo should be true")
 	}
-	if cfg.Modules.Git.Symbols.Unstaged != "!" {
-		t.Errorf("unstaged: got %q, want %q", cfg.Modules.Git.Symbols.Unstaged, "!")
+	if cfg.Modules.Git.Sign.Symbols.Unstaged != "!" {
+		t.Errorf("unstaged: got %q, want %q", cfg.Modules.Git.Sign.Symbols.Unstaged, "!")
 	}
 	// Empty symbols should be filled with defaults
-	if cfg.Modules.Git.Symbols.Staged != "+" {
-		t.Errorf("staged should default to +, got %q", cfg.Modules.Git.Symbols.Staged)
+	if cfg.Modules.Git.Sign.Symbols.Staged != "+" {
+		t.Errorf("staged should default to +, got %q", cfg.Modules.Git.Sign.Symbols.Staged)
 	}
 }
 

@@ -155,9 +155,6 @@ modules:
   kube:
     enabled: false
 
-    # Symbol displayed before the context name
-    symbol: "⎈"
-
     # Strip cloud provider prefixes from context name
     # GKE: gke_project_region_cluster → project/cluster
     # EKS: arn:aws:eks:region:account:cluster/name → name
@@ -171,9 +168,6 @@ modules:
   # ── gcp ──────────────────────────────────────────
   gcp:
     enabled: false
-
-    # Symbol displayed before the project name
-    symbol: "☁"
 
     # Sub-keys: gcp.project, gcp.account, gcp.region, gcp.config
     # gcp.config only shown when active config is not "default"

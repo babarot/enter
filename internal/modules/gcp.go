@@ -30,13 +30,8 @@ func (m *GcpModule) Run(ctx *module.Context) *module.Output {
 		return nil
 	}
 
-	symbol := ctx.Config.Modules.Gcp.Symbol
-
-	// Inline: ☁ project (account) or ☁ account
-	segments := []module.Segment{
-		module.NewSegment(symbol, module.Accent),
-		module.Plain(" "),
-	}
+	// Inline: project (account) or account
+	var segments []module.Segment
 	if info.project != "" {
 		segments = append(segments, module.NewSegment(info.project, module.Accent))
 		if info.account != "" {
