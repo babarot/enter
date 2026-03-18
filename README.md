@@ -73,6 +73,7 @@ How it works:
 --last-dir <path>                 Previous directory (for trigger: on_cd)
 --init-shell <zsh|bash>           Print shell integration snippet
 --init-config                     Generate default config file
+--edit-config                     Open config file in $EDITOR
 --version, -v                     Show version
 --help                            Show help
 ```
@@ -85,6 +86,12 @@ Generate a default config:
 
 ```bash
 enter --init-config
+```
+
+Edit the config in your editor:
+
+```bash
+enter --edit-config
 ```
 
 ### Full Config Reference
