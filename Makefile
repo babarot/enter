@@ -5,7 +5,7 @@ LDFLAGS := "-X main.version=$(VERSION) -X main.revision=$(shell git rev-parse --
 all: build
 
 test:
-	go test ./...
+	go test ./... -coverprofile=coverage.out -covermode=count
 
 build:
 	go build -ldflags $(LDFLAGS) -trimpath -o $(BINARY_NAME) ./cmd/enter/
