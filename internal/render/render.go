@@ -14,12 +14,10 @@ func Render(outputs []*module.Output, cfg *config.Config) string {
 	theme := GetTheme(cfg.Theme)
 
 	switch cfg.Format {
-	case "table":
-		return renderTable(outputs, cfg, theme)
-	case "compact":
-		return renderCompact(outputs, cfg, theme)
-	default:
+	case "inline":
 		return renderInline(outputs, cfg, theme)
+	default:
+		return renderTable(outputs, cfg, theme)
 	}
 }
 
@@ -119,19 +117,6 @@ func renderTable(outputs []*module.Output, cfg *config.Config, theme *ThemePalet
 	return t.Render()
 }
 
-func renderCompact(outputs []*module.Output, cfg *config.Config, theme *ThemePalette) string {
-	entries := flattenRows(outputs, theme)
-	if cfg.KeyStyle == "tree" {
-		entries = treeifyKeys(entries)
-	}
-	var lines []string
-	for _, e := range entries {
-		label := Paint(e.key, module.Muted, theme)
-		lines = append(lines, label+"  "+e.value)
-	}
-
-	return strings.Join(lines, "\n")
-}
 
 // treeifyKeys transforms flat dotted keys into tree-structured display keys.
 // Keys without a dot prefix are kept as-is.

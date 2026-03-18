@@ -29,7 +29,7 @@ func main() {
 	flag.StringVar(&initShell, "init-shell", "", "Print shell integration snippet (zsh|bash)")
 	flag.BoolVar(&initConfig, "init-config", false, "Generate default config file")
 	flag.StringVar(&configPath, "config", "", "Path to config file")
-	flag.StringVar(&format, "format", "", "Display format (inline|table|compact)")
+	flag.StringVar(&format, "format", "", "Display format (table|inline)")
 	flag.StringVar(&theme, "theme", "", "Color theme")
 	flag.StringVar(&lastPwd, "last-pwd", "", "Previous working directory (for trigger: on_cd)")
 	flag.BoolVar(&showVer, "version", false, "Show version")

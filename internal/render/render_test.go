@@ -130,25 +130,6 @@ func TestRenderTable(t *testing.T) {
 	}
 }
 
-func TestRenderCompact(t *testing.T) {
-	cfg := config.Default()
-	cfg.Format = "compact"
-	outputs := []*module.Output{
-		{
-			Name:     "pwd",
-			Segments: []module.Segment{module.NewSegment("test/dir", module.Secondary)},
-		},
-	}
-
-	result := Render(outputs, cfg)
-	if !strings.Contains(result, "test/dir") {
-		t.Error("compact render should contain pwd value")
-	}
-	if !strings.Contains(result, "pwd") {
-		t.Error("compact render should contain label")
-	}
-}
-
 func TestRenderWithRows(t *testing.T) {
 	cfg := config.Default()
 	cfg.Format = "table"

@@ -28,7 +28,7 @@ func Plain(text string) Segment {
 	return Segment{Text: text, Color: Default}
 }
 
-// Row is a key-value pair for structured output (table/compact formats).
+// Row is a key-value pair for structured output (table format).
 type Row struct {
 	Key      string
 	Segments []Segment
@@ -37,7 +37,7 @@ type Row struct {
 type Output struct {
 	Name     string
 	Segments []Segment // used for inline format
-	Rows     []Row     // used for table/compact formats (optional)
+	Rows     []Row     // used for table format (optional)
 }
 
 type Context struct {

@@ -131,7 +131,7 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 		segments = append(segments, cwdSegs...)
 	}
 
-	// Build rows for table/compact formats
+	// Build rows for table format
 	var rows []module.Row
 	if gitCfg.ShowRepo && info.repoURL != "" {
 		rows = append(rows, module.Row{

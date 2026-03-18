@@ -178,7 +178,7 @@ func Load(path string) *Config {
 
 func GenerateDefault() string {
 	return `theme: "default"
-format: "table"             # inline | table | compact
+format: "table"             # table | inline
 separator: " │ "
 trigger: "always"           # always | on_cd
 key_style: "tree"           # flat (git.sign) | tree (├── sign)

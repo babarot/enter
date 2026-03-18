@@ -54,7 +54,7 @@ How it works:
 ## CLI Flags
 
 ```
---format <inline|table|compact>   Display format (overrides config)
+--format <table|inline>           Display format (overrides config)
 --theme <name>                    Color theme (overrides config)
 --config <path>                   Path to config file
 --last-pwd <path>                 Previous directory (for trigger: on_cd)
@@ -81,9 +81,8 @@ enter --init-config
 theme: "default"
 
 # Display format:
-#   table   - bordered table with labeled rows (default)
-#   inline  - single line with separator
-#   compact - multi-line with labels, no border
+#   table  - bordered table with labeled rows (default)
+#   inline - single line with separator
 format: "table"
 
 # Separator between segments in inline format
@@ -112,20 +111,20 @@ modules:
 
     # Show the repository HTTPS URL (parsed from remote origin)
     # Supports: git@, ssh://, https:// remote formats
-    # Table/compact key: git.url
+    # Table key: git.url
     show_repo: true
 
     # Show "not a git repo" when outside a git repository
     show_indicator: true
 
     # Show current position within the repository
-    # Table/compact key: git.cwd
+    # Table key: git.cwd
     # At repo root: "/"
     # In subdirectory: depends on tree_style
     show_tree: true
 
     # Show git status output
-    # Table/compact key: git.status
+    # Table key: git.status
     # Color-coded: M=yellow, A=green, D=red, ??=muted (short)
     #              Section-based coloring (long)
     show_status: true
@@ -246,18 +245,7 @@ Multiline values (git.status, git.cwd tree, claude.config) are automatically wra
 ~/s/g/babarot/enter │ (main *%) │ current ▰▱▱▱▱▱▱▱▱▱ 14% ⟳ 3:00pm | weekly ▰▱▱▱▱▱▱▱▱▱ 14% ⟳ Mar 19, 2:00pm
 ```
 
-**compact**:
-
-```
-pwd              ~/s/g/babarot/enter
-git.url          https://github.com/babarot/enter
-git.sign         (main *%)
-git.cwd          /
-claude.usage.5h   ▰▱▱▱▱▱▱▱▱▱  14% ⟳ 3:00pm
-claude.usage.7d    ▰▱▱▱▱▱▱▱▱▱  14% ⟳ Mar 19, 2:00pm
-```
-
-### Table/Compact Row Keys
+### Table Row Keys
 
 | Key | Source | Description |
 |-----|--------|-------------|
@@ -308,7 +296,7 @@ internal/
 ├── config/config.go     YAML config loading + defaults
 ├── module/module.go     Module interface, Segment, SemanticColor
 ├── render/
-│   ├── render.go        Output formatting (inline/table/compact)
+│   ├── render.go        Output formatting (table/inline)
 │   └── theme.go         Color themes
 └── modules/
     ├── pwd.go           Current directory
