@@ -248,7 +248,11 @@ func treeifyKeys(entries []struct{ key, value string }) []struct{ key, value str
 func renderSegments(segments []module.Segment, theme *ThemePalette) string {
 	var buf strings.Builder
 	for _, seg := range segments {
-		buf.WriteString(Paint(seg.Text, seg.Color, theme))
+		if seg.Underline {
+			buf.WriteString(PaintUnderline(seg.Text, seg.Color, theme))
+		} else {
+			buf.WriteString(Paint(seg.Text, seg.Color, theme))
+		}
 	}
 	return buf.String()
 }
@@ -259,6 +263,15 @@ func PaintBold(text string, color module.SemanticColor, theme *ThemePalette) str
 		return lipgloss.NewStyle().Bold(true).Render(text)
 	}
 	style := lipgloss.NewStyle().Foreground(lipgloss.Color(toHex(*rgb))).Bold(true)
+	return style.Render(text)
+}
+
+func PaintUnderline(text string, color module.SemanticColor, theme *ThemePalette) string {
+	rgb := ColorForSemantic(color, theme)
+	style := lipgloss.NewStyle().Underline(true)
+	if rgb != nil {
+		style = style.Foreground(lipgloss.Color(toHex(*rgb)))
+	}
 	return style.Render(text)
 }
 

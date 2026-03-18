@@ -16,8 +16,9 @@ const (
 )
 
 type Segment struct {
-	Text  string
-	Color SemanticColor
+	Text      string
+	Color     SemanticColor
+	Underline bool
 }
 
 func NewSegment(text string, color SemanticColor) Segment {
