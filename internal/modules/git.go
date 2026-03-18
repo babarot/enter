@@ -231,19 +231,19 @@ func getGitStatusLong(cwd string) []module.Segment {
 
 		trimmed := strings.TrimSpace(line)
 
-		// Detect section changes
+		// Detect section changes (headers always muted)
 		switch {
 		case strings.HasPrefix(trimmed, "Changes to be committed"):
 			section = "staged"
-			segments = append(segments, module.NewSegment(line, module.Success))
+			segments = append(segments, module.NewSegment(line, module.Muted))
 			continue
 		case strings.HasPrefix(trimmed, "Changes not staged"):
 			section = "unstaged"
-			segments = append(segments, module.NewSegment(line, module.Danger))
+			segments = append(segments, module.NewSegment(line, module.Muted))
 			continue
 		case strings.HasPrefix(trimmed, "Untracked files"):
 			section = "untracked"
-			segments = append(segments, module.NewSegment(line, module.Warning))
+			segments = append(segments, module.NewSegment(line, module.Muted))
 			continue
 		}
 
@@ -264,7 +264,10 @@ func getGitStatusLong(cwd string) []module.Segment {
 			}
 		case "untracked":
 			if trimmed != "" && !strings.HasPrefix(trimmed, "(") {
-				segments = append(segments, module.NewSegment(line, module.Warning))
+				// Split indent from filename, underline only the filename
+				indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+				segments = append(segments, module.NewSegment(indent, module.Muted))
+				segments = append(segments, module.Segment{Text: trimmed, Color: module.Muted, Underline: true})
 			} else {
 				segments = append(segments, module.NewSegment(line, module.Muted))
 			}
@@ -276,19 +279,21 @@ func getGitStatusLong(cwd string) []module.Segment {
 }
 
 // statusCodeColor returns the semantic color for a git status XY code pair.
+// X = index (staged), Y = worktree (unstaged).
+// Staged → green (Success), unstaged → red (Danger), both → yellow (Warning).
 func statusCodeColor(x, y byte) module.SemanticColor {
-	// Staged changes (index) take priority for color
+	staged := x != ' ' && x != '?'
+	unstaged := y != ' ' && y != '?'
+
 	switch {
-	case x == 'A' || y == 'A':
-		return module.Success // added
-	case x == 'D' || y == 'D':
-		return module.Danger // deleted
-	case x == 'M' || y == 'M':
-		return module.Warning // modified
-	case x == 'R':
-		return module.Accent // renamed
 	case x == '?' && y == '?':
 		return module.Muted // untracked
+	case staged && unstaged:
+		return module.Warning // both staged and unstaged changes
+	case staged:
+		return module.Success // staged only (index)
+	case unstaged:
+		return module.Danger // unstaged only (worktree)
 	default:
 		return module.Secondary
 	}

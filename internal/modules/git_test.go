@@ -81,15 +81,19 @@ func TestStatusCodeColor(t *testing.T) {
 		x, y byte
 		want module.SemanticColor
 	}{
+		// Staged only (index) → green
 		{'A', ' ', module.Success},
-		{' ', 'A', module.Success},
-		{'D', ' ', module.Danger},
+		{'M', ' ', module.Success},
+		{'D', ' ', module.Success},
+		{'R', ' ', module.Success},
+		// Unstaged only (worktree) → red
+		{' ', 'M', module.Danger},
 		{' ', 'D', module.Danger},
-		{'M', ' ', module.Warning},
-		{' ', 'M', module.Warning},
-		{'R', ' ', module.Accent},
-		{'?', '?', module.Muted},
+		// Both staged and unstaged → yellow
 		{'M', 'M', module.Warning},
+		{'A', 'M', module.Warning},
+		// Untracked → muted
+		{'?', '?', module.Muted},
 	}
 
 	for _, tt := range tests {

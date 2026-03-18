@@ -323,26 +323,6 @@ The `symbols` map in the git config customizes the status indicators shown in `g
        └── unstaged changes
 ```
 
-## Architecture
-
-```
-cmd/enter/main.go        CLI, parallel execution (goroutine + WaitGroup)
-internal/
-├── config/config.go     YAML config loading + defaults
-├── module/module.go     Module interface, Segment, SemanticColor
-├── render/
-│   ├── render.go        Output formatting (table/inline)
-│   └── theme.go         Color themes
-└── modules/
-    ├── cwd.go           Current working directory
-    ├── git.go           Git status, repo URL, tree, status output
-    ├── kube.go          Kubernetes context
-    ├── gcp.go           GCP project
-    └── claude.go        Claude Code API usage + project config status
-```
-
-All modules run in parallel using goroutines. Each module returns `nil` if disabled or has nothing to display.
-
 ## License
 
 MIT
