@@ -41,18 +41,31 @@ func renderInline(outputs []*module.Output, cfg *config.Config, theme *ThemePale
 // If a module has Rows, each row becomes a separate entry.
 // Otherwise, the module's Name + Segments become a single entry.
 func flattenRows(outputs []*module.Output, theme *ThemePalette) []struct{ key, value string } {
+	borderColor := lipgloss.Color(toHex(theme.Muted))
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(borderColor).
+		Padding(0, 1)
+
 	var result []struct{ key, value string }
 	for _, out := range outputs {
 		if len(out.Rows) > 0 {
 			for _, row := range out.Rows {
 				value := renderSegments(row.Segments, theme)
 				if value != "" {
+					// Wrap multiline values in a nested box
+					if strings.Contains(value, "\n") {
+						value = boxStyle.Render(value)
+					}
 					result = append(result, struct{ key, value string }{row.Key, value})
 				}
 			}
 		} else {
 			value := renderSegments(out.Segments, theme)
 			if value != "" {
+				if strings.Contains(value, "\n") {
+					value = boxStyle.Render(value)
+				}
 				result = append(result, struct{ key, value string }{out.Name, value})
 			}
 		}
