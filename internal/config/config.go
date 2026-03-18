@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	Theme     string        `yaml:"theme"`
+	Format    string        `yaml:"format"`
 	Separator string        `yaml:"separator"`
 	Modules   ModulesConfig `yaml:"modules"`
 }
@@ -52,6 +53,7 @@ type GcpConfig struct {
 func Default() *Config {
 	return &Config{
 		Theme:     "default",
+		Format:    "inline",
 		Separator: " │ ",
 		Modules: ModulesConfig{
 			Pwd: PwdConfig{
@@ -134,6 +136,7 @@ func Load(path string) *Config {
 
 func GenerateDefault() string {
 	return `theme: "default"
+format: "inline"            # inline | table | compact
 separator: " │ "
 
 modules:

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,47 +13,52 @@ import (
 	"github.com/babarot/enter/internal/render"
 )
 
-func main() {
-	// Simple flag parsing (no external dependency needed for now)
-	args := os.Args[1:]
+var version = "0.1.0"
 
-	for i, arg := range args {
-		switch arg {
-		case "--init-shell":
-			if i+1 < len(args) {
-				printShellInit(args[i+1])
-			} else {
-				fmt.Fprintln(os.Stderr, "Usage: enter --init-shell <zsh|bash>")
-				os.Exit(1)
-			}
-			return
-		case "--init-config":
-			generateConfig()
-			return
-		case "--help", "-h":
-			fmt.Println("Usage: enter [options]")
-			fmt.Println()
-			fmt.Println("Options:")
-			fmt.Println("  --init-shell <zsh|bash>  Print shell integration snippet")
-			fmt.Println("  --init-config            Generate default config file")
-			fmt.Println("  --config <path>          Path to config file")
-			fmt.Println("  --help, -h               Show this help")
-			fmt.Println("  --version, -v            Show version")
-			return
-		case "--version", "-v":
-			fmt.Println("enter 0.1.0")
-			return
-		}
+func main() {
+	var (
+		initShell  string
+		initConfig bool
+		configPath string
+		format     string
+		theme      string
+		showVer    bool
+	)
+
+	flag.StringVar(&initShell, "init-shell", "", "Print shell integration snippet (zsh|bash)")
+	flag.BoolVar(&initConfig, "init-config", false, "Generate default config file")
+	flag.StringVar(&configPath, "config", "", "Path to config file")
+	flag.StringVar(&format, "format", "", "Display format (inline|table|compact)")
+	flag.StringVar(&theme, "theme", "", "Color theme")
+	flag.BoolVar(&showVer, "version", false, "Show version")
+	flag.BoolVar(&showVer, "v", false, "Show version")
+	flag.Parse()
+
+	if showVer {
+		fmt.Printf("enter %s\n", version)
+		return
+	}
+
+	if initShell != "" {
+		printShellInit(initShell)
+		return
+	}
+
+	if initConfig {
+		generateConfig()
+		return
 	}
 
 	// Load config
-	var configPath string
-	for i, arg := range args {
-		if arg == "--config" && i+1 < len(args) {
-			configPath = args[i+1]
-		}
-	}
 	cfg := config.Load(configPath)
+
+	// CLI flags override config
+	if format != "" {
+		cfg.Format = format
+	}
+	if theme != "" {
+		cfg.Theme = theme
+	}
 
 	cwd, _ := os.Getwd()
 
