@@ -54,8 +54,9 @@ type GitSymbols struct {
 }
 
 type KubeConfig struct {
-	Enabled bool   `yaml:"enabled"`
-	Symbol  string `yaml:"symbol"`
+	Enabled bool     `yaml:"enabled"`
+	Symbol  string   `yaml:"symbol"`
+	Order   []string `yaml:"order"`
 }
 
 type GcpConfig struct {
@@ -138,8 +139,9 @@ func DefaultGitSymbols() GitSymbols {
 }
 
 func ConfigPath() string {
-	if dir, err := os.UserConfigDir(); err == nil {
-		return filepath.Join(dir, "enter", "config.yaml")
+	// Prefer XDG_CONFIG_HOME, fall back to ~/.config (not ~/Library/Application Support on macOS)
+	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
+		return filepath.Join(xdg, "enter", "config.yaml")
 	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".config", "enter", "config.yaml")

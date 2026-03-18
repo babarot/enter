@@ -124,9 +124,9 @@ func renderTable(outputs []*module.Output, cfg *config.Config, theme *ThemePalet
 		BorderStyle(lipgloss.NewStyle().Foreground(borderColor)).
 		StyleFunc(func(row, col int) lipgloss.Style {
 			if col == 0 {
-				return lipgloss.NewStyle().PaddingRight(1)
+				return lipgloss.NewStyle().PaddingLeft(1).PaddingRight(1)
 			}
-			return lipgloss.NewStyle().PaddingLeft(1)
+			return lipgloss.NewStyle().PaddingLeft(1).PaddingRight(1)
 		})
 
 	return t.Render()

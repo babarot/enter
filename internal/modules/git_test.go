@@ -104,8 +104,8 @@ func TestFormatTree(t *testing.T) {
 	tests := []struct {
 		name, root, rel, style, want string
 	}{
-		{"root breadcrumb", "/home/user/project", "", "breadcrumb", "/"},
-		{"root tree", "/home/user/project", "", "tree", "/"},
+		{"root breadcrumb", "/home/user/project", "", "breadcrumb", "/project"},
+		{"root tree", "/home/user/project", "", "tree", "/project"},
 		{"subdir breadcrumb", "/home/user/project", "cmd/enter", "breadcrumb", "/project → cmd → enter"},
 		{"single dir breadcrumb", "/home/user/project", "src", "breadcrumb", "/project → src"},
 	}

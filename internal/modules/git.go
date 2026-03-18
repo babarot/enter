@@ -548,7 +548,7 @@ func formatTree(repoRoot, relPath, style string) string {
 
 	// At repo root
 	if relPath == "" {
-		return "/"
+		return "/" + rootName
 	}
 
 	parts := strings.Split(relPath, "/")
