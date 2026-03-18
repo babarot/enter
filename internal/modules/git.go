@@ -264,14 +264,7 @@ func getGitStatusLong(cwd string) []module.Segment {
 				segments = append(segments, module.NewSegment(line, module.Muted))
 			}
 		case "untracked":
-			if trimmed != "" && !strings.HasPrefix(trimmed, "(") {
-				// Split indent from filename, underline only the filename
-				indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
-				segments = append(segments, module.NewSegment(indent, module.Muted))
-				segments = append(segments, module.Segment{Text: trimmed, Color: module.Muted, Underline: true})
-			} else {
-				segments = append(segments, module.NewSegment(line, module.Muted))
-			}
+			segments = append(segments, module.NewSegment(line, module.Muted))
 		default:
 			segments = append(segments, module.NewSegment(line, module.Muted))
 		}
