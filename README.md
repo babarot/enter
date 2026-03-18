@@ -1,8 +1,21 @@
 # enter
 
-Show contextual info every time you press Enter in your shell.
+Press Enter. See where you are.
 
 ![](https://assets.babarot.dev/files/2026/03/ed1c76d931bd9f89.png)
+
+## Why
+
+We deal with more context than ever. Git branch, Kubernetes cluster, GCP project, Claude Code usage — all things you need to be aware of, and all things that change depending on where you are.
+
+The traditional answer is to cram this into your shell prompt or tmux statusline. But that approach doesn't scale: the prompt gets long, the statusline gets crowded, and neither adapts well to what actually matters in each directory.
+
+**enter** takes a different approach. Instead of displaying context *all the time*, it shows it **on demand** — when you press Enter on an empty command line. It detects the current directory, figures out what's relevant (git repo? Claude Code project? Kubernetes context?), and displays a clean, structured summary. Nothing clutters your prompt. Nothing runs on every command. Just press Enter when you need to know.
+
+- **Directory-aware**: Only shows what's relevant. Git info appears in repos, Claude usage appears in Claude projects, kube context appears when configured.
+- **Pluggable**: Each info source (git, kube, gcp, claude) is an independent module. Enable what you need.
+- **Configurable display**: Table or inline format. Tree-style keys. Themes. Symbol customization. All via a single YAML file.
+- **Fast**: All modules run in parallel. The display order follows your config file — no extra `order` fields needed.
 
 ## Install
 
