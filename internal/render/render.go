@@ -50,7 +50,22 @@ func flattenRows(outputs []*module.Output, theme *ThemePalette) []struct{ key, v
 	var result []struct{ key, value string }
 	for _, out := range outputs {
 		if len(out.Rows) > 0 {
+			// Build a set of parent keys to skip children
+			// e.g. if "claude.usage" exists, skip "claude.usage.5h" and "claude.usage.7d"
+			parentKeys := make(map[string]bool)
 			for _, row := range out.Rows {
+				parentKeys[row.Key] = true
+			}
+
+			for _, row := range out.Rows {
+				// Skip if a parent key exists (e.g. skip "x.y.z" if "x.y" exists)
+				if dot := strings.LastIndex(row.Key, "."); dot > 0 {
+					parent := row.Key[:dot]
+					if parentKeys[parent] {
+						continue
+					}
+				}
+
 				value := renderSegments(row.Segments, theme)
 				if value != "" {
 					// Wrap multiline values in a nested box

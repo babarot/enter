@@ -97,6 +97,31 @@ func (m *ClaudeModule) Run(ctx *module.Context) *module.Output {
 		})
 	}
 
+	// claude.usage (combined 5h + 7d)
+	if len(rows) >= 2 {
+		// Find 5h and 7d rows and merge into a combined row
+		var combinedSegs []module.Segment
+		for i, row := range rows {
+			if row.Key == "claude.usage.5h" || row.Key == "claude.usage.7d" {
+				label := "5h "
+				if row.Key == "claude.usage.7d" {
+					label = "7d "
+				}
+				if len(combinedSegs) > 0 {
+					combinedSegs = append(combinedSegs, module.Plain("\n"))
+				}
+				combinedSegs = append(combinedSegs, module.NewSegment(label, module.Muted))
+				combinedSegs = append(combinedSegs, rows[i].Segments...)
+			}
+		}
+		if len(combinedSegs) > 0 {
+			rows = append(rows, module.Row{
+				Key:      "claude.usage",
+				Segments: combinedSegs,
+			})
+		}
+	}
+
 	// claude.config
 	if cfg.ConfigView.Enabled {
 		configSegs := buildConfigView(ctx.Cwd, cfg.ConfigView.Mode)
