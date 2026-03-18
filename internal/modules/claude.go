@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/babarot/enter/internal/config"
 	"github.com/babarot/enter/internal/module"
 )
 
@@ -35,102 +36,23 @@ func (m *ClaudeModule) Run(ctx *module.Context) *module.Output {
 		return nil
 	}
 
-	// Mode check
 	if cfg.Mode == "auto" && !detectClaudeProject(ctx.Cwd) {
 		return nil
 	}
 
-	usage := fetchUsage(cfg.CacheTTL)
-	if usage == nil {
-		return nil
-	}
-
-	barStyle := cfg.BarStyle
-	timeStyle := cfg.TimeStyle
-	barWidth := 10
-
 	var segments []module.Segment
 	var rows []module.Row
 
-	// Current (5-hour window)
-	if usage.FiveHour != nil {
-		pct := int(usage.FiveHour.Utilization)
-		reset := formatReset(usage.FiveHour.ResetsAt, "time", timeStyle)
-		bar := buildBar(pct, barWidth, barStyle)
-		color := pctColor(pct)
+	// Usage (5h + 7d windows)
+	usageSegs, usageRows := buildUsageOutput(cfg)
+	segments = append(segments, usageSegs...)
+	rows = append(rows, usageRows...)
 
-		seg := fmt.Sprintf("current %s %d%% ⟳ %s", bar, pct, reset)
-		segments = append(segments, module.NewSegment(seg, color))
-
-		rows = append(rows, module.Row{
-			Key: "claude.usage.5h",
-			Segments: []module.Segment{
-				module.NewSegment(bar+" ", module.Default),
-				module.NewSegment(fmt.Sprintf("%3d%%", pct), color),
-				module.Plain(" ⟳ "),
-				module.NewSegment(reset, module.Muted),
-			},
-		})
-	}
-
-	// Weekly (7-day window)
-	if usage.SevenDay != nil {
-		pct := int(usage.SevenDay.Utilization)
-		reset := formatReset(usage.SevenDay.ResetsAt, "datetime", timeStyle)
-		bar := buildBar(pct, barWidth, barStyle)
-		color := pctColor(pct)
-
-		if len(segments) > 0 {
-			segments = append(segments, module.Plain(" | "))
-		}
-		seg := fmt.Sprintf("weekly %s %d%% ⟳ %s", bar, pct, reset)
-		segments = append(segments, module.NewSegment(seg, color))
-
-		rows = append(rows, module.Row{
-			Key: "claude.usage.7d",
-			Segments: []module.Segment{
-				module.NewSegment(bar+" ", module.Default),
-				module.NewSegment(fmt.Sprintf("%3d%%", pct), color),
-				module.Plain(" ⟳ "),
-				module.NewSegment(reset, module.Muted),
-			},
-		})
-	}
-
-	// claude.usage (combined 5h + 7d)
-	if len(rows) >= 2 {
-		// Find 5h and 7d rows and merge into a combined row
-		var combinedSegs []module.Segment
-		for i, row := range rows {
-			if row.Key == "claude.usage.5h" || row.Key == "claude.usage.7d" {
-				label := "5h "
-				if row.Key == "claude.usage.7d" {
-					label = "7d "
-				}
-				if len(combinedSegs) > 0 {
-					combinedSegs = append(combinedSegs, module.Plain("\n"))
-				}
-				combinedSegs = append(combinedSegs, module.NewSegment(label, module.Muted))
-				combinedSegs = append(combinedSegs, rows[i].Segments...)
-			}
-		}
-		if len(combinedSegs) > 0 {
-			rows = append(rows, module.Row{
-				Key:      "claude.usage",
-				Segments: combinedSegs,
-			})
-		}
-	}
-
-	// claude.config
+	// Config view
 	if cfg.ConfigView.Enabled {
-		configSegs := buildConfigView(ctx.Cwd, cfg.ConfigView.Mode)
-		if len(configSegs) > 0 {
-			rows = append(rows, module.Row{
-				Key:      "claude.config",
-				Segments: configSegs,
-			})
-			// Add to inline too
+		configSegs, configRow := buildConfigOutput(ctx.Cwd, cfg.ConfigView.Mode)
+		if configRow != nil {
+			rows = append(rows, *configRow)
 			if len(segments) > 0 {
 				segments = append(segments, module.Plain(" | "))
 			}
@@ -147,6 +69,95 @@ func (m *ClaudeModule) Run(ctx *module.Context) *module.Output {
 		Segments: segments,
 		Rows:     rows,
 		RowOrder: cfg.Order,
+	}
+}
+
+func buildUsageOutput(cfg *config.ClaudeConfig) ([]module.Segment, []module.Row) {
+	usage := fetchUsage(cfg.CacheTTL)
+	if usage == nil {
+		return nil, nil
+	}
+
+	barStyle := cfg.BarStyle
+	timeStyle := cfg.TimeStyle
+	barWidth := 10
+
+	var segments []module.Segment
+	var rows []module.Row
+
+	if usage.FiveHour != nil {
+		segs, row := buildWindowRow("claude.usage.5h", "current", "time",
+			usage.FiveHour, barWidth, barStyle, timeStyle)
+		segments = append(segments, segs...)
+		rows = append(rows, row)
+	}
+
+	if usage.SevenDay != nil {
+		if len(segments) > 0 {
+			segments = append(segments, module.Plain(" | "))
+		}
+		segs, row := buildWindowRow("claude.usage.7d", "weekly", "datetime",
+			usage.SevenDay, barWidth, barStyle, timeStyle)
+		segments = append(segments, segs...)
+		rows = append(rows, row)
+	}
+
+	// Combined row (claude.usage) when both windows exist
+	if len(rows) >= 2 {
+		var combinedSegs []module.Segment
+		for i, row := range rows {
+			label := "5h "
+			if row.Key == "claude.usage.7d" {
+				label = "7d "
+			}
+			if len(combinedSegs) > 0 {
+				combinedSegs = append(combinedSegs, module.Plain("\n"))
+			}
+			combinedSegs = append(combinedSegs, module.NewSegment(label, module.Muted))
+			combinedSegs = append(combinedSegs, rows[i].Segments...)
+		}
+		rows = append(rows, module.Row{
+			Key:      "claude.usage",
+			Segments: combinedSegs,
+		})
+	}
+
+	return segments, rows
+}
+
+func buildWindowRow(key, inlineLabel, displayStyle string, window *usageWindow,
+	barWidth int, barStyle, timeStyle string) ([]module.Segment, module.Row) {
+
+	pct := int(window.Utilization)
+	reset := formatReset(window.ResetsAt, displayStyle, timeStyle)
+	bar := buildBar(pct, barWidth, barStyle)
+	color := pctColor(pct)
+
+	segments := []module.Segment{
+		module.NewSegment(fmt.Sprintf("%s %s %d%% ⟳ %s", inlineLabel, bar, pct, reset), color),
+	}
+
+	row := module.Row{
+		Key: key,
+		Segments: []module.Segment{
+			module.NewSegment(bar+" ", module.Default),
+			module.NewSegment(fmt.Sprintf("%3d%%", pct), color),
+			module.Plain(" ⟳ "),
+			module.NewSegment(reset, module.Muted),
+		},
+	}
+
+	return segments, row
+}
+
+func buildConfigOutput(cwd, mode string) ([]module.Segment, *module.Row) {
+	segs := buildConfigView(cwd, mode)
+	if len(segs) == 0 {
+		return nil, nil
+	}
+	return segs, &module.Row{
+		Key:      "claude.config",
+		Segments: segs,
 	}
 }
 
@@ -400,9 +411,9 @@ func getOAuthToken() string {
 
 // --- Usage API with cache ---
 
-const (
-	cacheDir  = "/tmp/claude"
-	cacheFile = "/tmp/claude/enter-usage-cache.json"
+var (
+	cacheDir  = filepath.Join(os.TempDir(), "claude")
+	cacheFile = filepath.Join(os.TempDir(), "claude", "enter-usage-cache.json")
 )
 
 func fetchUsage(cacheTTL int) *usageData {
