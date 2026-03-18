@@ -140,7 +140,7 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 		})
 	}
 	rows = append(rows, module.Row{
-		Key:      "git.status",
+		Key:      "git.sign",
 		Segments: statusSegs,
 	})
 	if gitCfg.ShowTree {
@@ -149,11 +149,148 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 			Segments: cwdSegs,
 		})
 	}
+	if gitCfg.ShowStatus {
+		statusSegs := getGitStatusSegments(ctx.Cwd, gitCfg.StatusStyle)
+		if len(statusSegs) > 0 {
+			rows = append(rows, module.Row{
+				Key:      "git.status",
+				Segments: statusSegs,
+			})
+		}
+	}
 
 	return &module.Output{
 		Name:     m.Name(),
 		Segments: segments,
 		Rows:     rows,
+	}
+}
+
+func getGitStatusSegments(cwd, style string) []module.Segment {
+	switch style {
+	case "long":
+		return getGitStatusLong(cwd)
+	default:
+		return getGitStatusShort(cwd)
+	}
+}
+
+func getGitStatusShort(cwd string) []module.Segment {
+	output, ok := execGit(cwd, "status", "--short")
+	if !ok || output == "" {
+		return nil
+	}
+
+	var segments []module.Segment
+	for i, line := range strings.Split(output, "\n") {
+		if line == "" {
+			continue
+		}
+		if i > 0 {
+			segments = append(segments, module.Plain("\n"))
+		}
+		if len(line) >= 3 {
+			x, y := line[0], line[1]
+			filename := strings.TrimLeft(line[2:], " ")
+
+			var code string
+			switch {
+			case x != ' ' && y != ' ':
+				code = string([]byte{x, y})
+			case x != ' ':
+				code = string(x)
+			case y != ' ':
+				code = string(y)
+			default:
+				code = "?"
+			}
+
+			codeColor := statusCodeColor(x, y)
+			segments = append(segments, module.NewSegment(fmt.Sprintf("%-2s", code), codeColor))
+			segments = append(segments, module.NewSegment(" "+filename, module.Secondary))
+		} else {
+			segments = append(segments, module.NewSegment(line, module.Muted))
+		}
+	}
+	return segments
+}
+
+func getGitStatusLong(cwd string) []module.Segment {
+	output, ok := execGit(cwd, "status")
+	if !ok || output == "" {
+		return nil
+	}
+
+	// Color by section context
+	var segments []module.Segment
+	section := "header" // header, staged, unstaged, untracked
+	for i, line := range strings.Split(output, "\n") {
+		if i > 0 {
+			segments = append(segments, module.Plain("\n"))
+		}
+
+		trimmed := strings.TrimSpace(line)
+
+		// Detect section changes
+		switch {
+		case strings.HasPrefix(trimmed, "Changes to be committed"):
+			section = "staged"
+			segments = append(segments, module.NewSegment(line, module.Success))
+			continue
+		case strings.HasPrefix(trimmed, "Changes not staged"):
+			section = "unstaged"
+			segments = append(segments, module.NewSegment(line, module.Danger))
+			continue
+		case strings.HasPrefix(trimmed, "Untracked files"):
+			section = "untracked"
+			segments = append(segments, module.NewSegment(line, module.Warning))
+			continue
+		}
+
+		// Color based on current section
+		switch section {
+		case "staged":
+			if strings.HasPrefix(trimmed, "modified:") || strings.HasPrefix(trimmed, "new file:") ||
+				strings.HasPrefix(trimmed, "deleted:") || strings.HasPrefix(trimmed, "renamed:") {
+				segments = append(segments, module.NewSegment(line, module.Success))
+			} else {
+				segments = append(segments, module.NewSegment(line, module.Muted))
+			}
+		case "unstaged":
+			if strings.HasPrefix(trimmed, "modified:") || strings.HasPrefix(trimmed, "deleted:") {
+				segments = append(segments, module.NewSegment(line, module.Danger))
+			} else {
+				segments = append(segments, module.NewSegment(line, module.Muted))
+			}
+		case "untracked":
+			if trimmed != "" && !strings.HasPrefix(trimmed, "(") {
+				segments = append(segments, module.NewSegment(line, module.Warning))
+			} else {
+				segments = append(segments, module.NewSegment(line, module.Muted))
+			}
+		default:
+			segments = append(segments, module.NewSegment(line, module.Muted))
+		}
+	}
+	return segments
+}
+
+// statusCodeColor returns the semantic color for a git status XY code pair.
+func statusCodeColor(x, y byte) module.SemanticColor {
+	// Staged changes (index) take priority for color
+	switch {
+	case x == 'A' || y == 'A':
+		return module.Success // added
+	case x == 'D' || y == 'D':
+		return module.Danger // deleted
+	case x == 'M' || y == 'M':
+		return module.Warning // modified
+	case x == 'R':
+		return module.Accent // renamed
+	case x == '?' && y == '?':
+		return module.Muted // untracked
+	default:
+		return module.Secondary
 	}
 }
 

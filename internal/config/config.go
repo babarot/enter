@@ -31,7 +31,9 @@ type GitConfig struct {
 	ShowRepo      bool       `yaml:"show_repo"`
 	ShowIndicator bool       `yaml:"show_indicator"`
 	ShowTree      bool       `yaml:"show_tree"`
-	TreeStyle     string     `yaml:"tree_style"` // "breadcrumb" | "tree"
+	ShowStatus    bool       `yaml:"show_status"`
+	TreeStyle     string     `yaml:"tree_style"`   // "breadcrumb" | "tree"
+	StatusStyle   string     `yaml:"status_style"`  // "short" | "long"
 	Symbols       GitSymbols `yaml:"symbols"`
 }
 
@@ -69,7 +71,9 @@ func Default() *Config {
 				ShowRepo:      false,
 				ShowIndicator: false,
 				ShowTree:      false,
+				ShowStatus:    false,
 				TreeStyle:     "breadcrumb",
+				StatusStyle:   "short",
 				Symbols:       DefaultGitSymbols(),
 			},
 			Kube: KubeConfig{
@@ -157,7 +161,9 @@ modules:
     show_repo: false        # show repository URL
     show_indicator: false   # show whether in a git repo
     show_tree: false        # show current position in repo
+    show_status: false      # show git status output
     tree_style: "breadcrumb" # breadcrumb | tree
+    status_style: "short"   # short | long
     symbols:
       unstaged: "*"
       staged: "+"
