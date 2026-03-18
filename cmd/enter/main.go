@@ -22,6 +22,7 @@ func main() {
 		configPath string
 		format     string
 		theme      string
+		lastPwd    string
 		showVer    bool
 	)
 
@@ -30,6 +31,7 @@ func main() {
 	flag.StringVar(&configPath, "config", "", "Path to config file")
 	flag.StringVar(&format, "format", "", "Display format (inline|table|compact)")
 	flag.StringVar(&theme, "theme", "", "Color theme")
+	flag.StringVar(&lastPwd, "last-pwd", "", "Previous working directory (for trigger: on_cd)")
 	flag.BoolVar(&showVer, "version", false, "Show version")
 	flag.BoolVar(&showVer, "v", false, "Show version")
 	flag.Parse()
@@ -61,6 +63,11 @@ func main() {
 	}
 
 	cwd, _ := os.Getwd()
+
+	// trigger: on_cd — skip if directory hasn't changed
+	if cfg.Trigger == "on_cd" && lastPwd != "" && lastPwd == cwd {
+		return
+	}
 
 	ctx := &module.Context{
 		Cwd:    cwd,
@@ -105,16 +112,38 @@ func main() {
 func printShellInit(shell string) {
 	switch shell {
 	case "zsh":
-		fmt.Print(`__enter_precmd() {
-  enter
+		fmt.Print(`__enter_flag=false
+__enter_last_pwd="$PWD"
+__enter_widget() {
+  if [[ -z "$BUFFER" ]]; then
+    __enter_flag=true
+  fi
+  zle accept-line
 }
+__enter_precmd() {
+  if $__enter_flag; then
+    __enter_flag=false
+    enter --last-pwd="$__enter_last_pwd"
+    __enter_last_pwd="$PWD"
+  fi
+}
+zle -N __enter_widget
+bindkey '^m' __enter_widget
 autoload -Uz add-zsh-hook
 add-zsh-hook precmd __enter_precmd
 `)
 	case "bash":
-		fmt.Print(`__enter_precmd() {
-  enter
+		fmt.Print(`__enter_prev_cmd=""
+__enter_last_pwd="$PWD"
+__enter_preexec() { __enter_prev_cmd="$1"; }
+__enter_precmd() {
+  if [[ -z "$__enter_prev_cmd" ]]; then
+    enter --last-pwd="$__enter_last_pwd"
+    __enter_last_pwd="$PWD"
+  fi
+  __enter_prev_cmd=""
 }
+trap '__enter_preexec "$BASH_COMMAND"' DEBUG
 PROMPT_COMMAND="__enter_precmd;${PROMPT_COMMAND}"
 `)
 	default:

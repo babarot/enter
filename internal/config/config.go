@@ -8,10 +8,11 @@ import (
 )
 
 type Config struct {
-	Theme     string        `yaml:"theme"`
-	Format    string        `yaml:"format"`
-	Separator string        `yaml:"separator"`
-	Modules   ModulesConfig `yaml:"modules"`
+	Theme        string        `yaml:"theme"`
+	Format       string        `yaml:"format"`
+	Separator    string        `yaml:"separator"`
+	Trigger      string        `yaml:"trigger"` // "always" | "on_cd"
+	Modules      ModulesConfig `yaml:"modules"`
 }
 
 type ModulesConfig struct {
@@ -76,6 +77,7 @@ func Default() *Config {
 		Theme:     "default",
 		Format:    "table",
 		Separator: " │ ",
+		Trigger:   "always",
 		Modules: ModulesConfig{
 			Pwd: PwdConfig{
 				Enabled: true,
@@ -176,6 +178,7 @@ func GenerateDefault() string {
 	return `theme: "default"
 format: "table"             # inline | table | compact
 separator: " │ "
+trigger: "always"           # always | on_cd
 
 modules:
   pwd:

@@ -45,12 +45,19 @@ eval "$(enter --init-shell zsh)"
 eval "$(enter --init-shell bash)"
 ```
 
+Only fires on **empty Enter** (pressing Enter with no command). Running commands like `ls` or `git status` will not trigger the display.
+
+How it works:
+- **zsh**: Uses `bindkey '^m'` with a custom widget + `precmd` hook. The widget sets a flag on empty input, and `precmd` runs `enter` only when the flag is set. This avoids overriding `accept-line` directly, preventing conflicts with other plugins (fzf-tab, etc.).
+- **bash**: Uses `DEBUG` trap + `PROMPT_COMMAND` to detect whether a command was entered.
+
 ## CLI Flags
 
 ```
 --format <inline|table|compact>   Display format (overrides config)
 --theme <name>                    Color theme (overrides config)
 --config <path>                   Path to config file
+--last-pwd <path>                 Previous directory (for trigger: on_cd)
 --init-shell <zsh|bash>           Print shell integration snippet
 --init-config                     Generate default config file
 --version, -v                     Show version
@@ -81,6 +88,11 @@ format: "table"
 
 # Separator between segments in inline format
 separator: " │ "
+
+# When to show output on empty Enter:
+#   always - every empty Enter (default)
+#   on_cd  - only when directory changed
+trigger: "always"
 
 modules:
   # ── pwd ──────────────────────────────────────────
