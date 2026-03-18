@@ -93,6 +93,9 @@ separator: " │ "
 #   on_cd  - only when directory changed
 trigger: "always"
 
+# Module display order is determined by the key order in this file.
+# Reorder the module sections below to change the display order.
+# Modules not listed here are appended in default order.
 modules:
   # ── pwd ──────────────────────────────────────────
   pwd:
@@ -272,6 +275,22 @@ Six built-in themes:
 | `dracula` | Based on Dracula theme |
 | `nord` | Based on Nord color scheme |
 | `gruvbox` | Based on Gruvbox dark |
+
+### Module Order
+
+The display order of modules is determined by the key order in the config file. Simply reorder the module sections to change the display order:
+
+```yaml
+modules:
+  claude:    # ← shown first
+    enabled: true
+  git:       # ← shown second
+    enabled: true
+  pwd:       # ← shown third
+    enabled: true
+```
+
+Modules not listed in the config file are appended in default order (`pwd`, `git`, `kube`, `gcp`, `claude`). No separate `order` field is needed.
 
 ### Git Symbols
 

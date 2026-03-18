@@ -74,13 +74,21 @@ func main() {
 		Config: cfg,
 	}
 
-	// All modules in display order
-	allModules := []module.Module{
-		&modules.PwdModule{},
-		&modules.GitModule{},
-		&modules.KubeModule{},
-		&modules.GcpModule{},
-		&modules.ClaudeModule{},
+	// Module registry
+	moduleMap := map[string]module.Module{
+		"pwd":    &modules.PwdModule{},
+		"git":    &modules.GitModule{},
+		"kube":   &modules.KubeModule{},
+		"gcp":    &modules.GcpModule{},
+		"claude": &modules.ClaudeModule{},
+	}
+
+	// Order modules based on config
+	var allModules []module.Module
+	for _, name := range cfg.ModuleOrder {
+		if m, ok := moduleMap[name]; ok {
+			allModules = append(allModules, m)
+		}
 	}
 
 	// Run all modules in parallel

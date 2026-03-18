@@ -125,6 +125,94 @@ func TestGenerateDefault(t *testing.T) {
 	}
 }
 
+func TestDefaultModuleOrder(t *testing.T) {
+	cfg := Default()
+	want := []string{"pwd", "git", "kube", "gcp", "claude"}
+	if len(cfg.ModuleOrder) != len(want) {
+		t.Fatalf("ModuleOrder length: got %d, want %d", len(cfg.ModuleOrder), len(want))
+	}
+	for i, name := range want {
+		if cfg.ModuleOrder[i] != name {
+			t.Errorf("ModuleOrder[%d]: got %q, want %q", i, cfg.ModuleOrder[i], name)
+		}
+	}
+}
+
+func TestModuleOrderFromConfig(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	// claude before git, pwd last
+	content := `
+modules:
+  claude:
+    enabled: true
+  git:
+    enabled: true
+  pwd:
+    enabled: true
+`
+	os.WriteFile(path, []byte(content), 0o644)
+
+	cfg := Load(path)
+	// Should be: claude, git, pwd, then defaults not in config (kube, gcp)
+	want := []string{"claude", "git", "pwd", "kube", "gcp"}
+	if len(cfg.ModuleOrder) != len(want) {
+		t.Fatalf("ModuleOrder length: got %d, want %d\norder: %v", len(cfg.ModuleOrder), len(want), cfg.ModuleOrder)
+	}
+	for i, name := range want {
+		if cfg.ModuleOrder[i] != name {
+			t.Errorf("ModuleOrder[%d]: got %q, want %q", i, cfg.ModuleOrder[i], name)
+		}
+	}
+}
+
+func TestModuleOrderPartial(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	// Only git specified
+	content := `
+modules:
+  git:
+    enabled: true
+`
+	os.WriteFile(path, []byte(content), 0o644)
+
+	cfg := Load(path)
+	// git first, then remaining defaults
+	if cfg.ModuleOrder[0] != "git" {
+		t.Errorf("first module should be git, got %q", cfg.ModuleOrder[0])
+	}
+	// All default modules should be present
+	seen := make(map[string]bool)
+	for _, name := range cfg.ModuleOrder {
+		seen[name] = true
+	}
+	for _, name := range DefaultModuleOrder {
+		if !seen[name] {
+			t.Errorf("missing default module %q in order", name)
+		}
+	}
+}
+
+func TestModuleOrderMissing(t *testing.T) {
+	cfg := Load("/nonexistent/path")
+	// Should fall back to default order
+	for i, name := range DefaultModuleOrder {
+		if cfg.ModuleOrder[i] != name {
+			t.Errorf("fallback ModuleOrder[%d]: got %q, want %q", i, cfg.ModuleOrder[i], name)
+		}
+	}
+}
+
+func TestExtractModuleOrderInvalidYAML(t *testing.T) {
+	order := extractModuleOrder([]byte("{{invalid"))
+	for i, name := range DefaultModuleOrder {
+		if order[i] != name {
+			t.Errorf("invalid yaml order[%d]: got %q, want %q", i, order[i], name)
+		}
+	}
+}
+
 func contains(s, sub string) bool {
 	return len(s) >= len(sub) && (s == sub || len(s) > 0 && containsStr(s, sub))
 }

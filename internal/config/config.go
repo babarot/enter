@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
+	goyaml "github.com/goccy/go-yaml"
 	"gopkg.in/yaml.v3"
 )
 
@@ -14,6 +15,9 @@ type Config struct {
 	Trigger      string        `yaml:"trigger"`   // "always" | "on_cd"
 	KeyStyle     string        `yaml:"key_style"` // "flat" | "tree"
 	Modules      ModulesConfig `yaml:"modules"`
+
+	// Derived from YAML key order (not a YAML field)
+	ModuleOrder []string `yaml:"-"`
 }
 
 type ModulesConfig struct {
@@ -73,13 +77,16 @@ type ClaudeConfigView struct {
 	Mode    string `yaml:"mode"` // "always" | "auto"
 }
 
+var DefaultModuleOrder = []string{"pwd", "git", "kube", "gcp", "claude"}
+
 func Default() *Config {
 	return &Config{
-		Theme:     "default",
-		Format:    "table",
-		Separator: " │ ",
-		Trigger:   "always",
-		KeyStyle:  "tree",
+		Theme:       "default",
+		Format:      "table",
+		Separator:   " │ ",
+		Trigger:     "always",
+		KeyStyle:    "tree",
+		ModuleOrder: DefaultModuleOrder,
 		Modules: ModulesConfig{
 			Pwd: PwdConfig{
 				Enabled: true,
@@ -152,6 +159,9 @@ func Load(path string) *Config {
 		return Default()
 	}
 
+	// Extract module order from YAML key order using goccy/go-yaml
+	cfg.ModuleOrder = extractModuleOrder(data)
+
 	// Fill empty symbols with defaults
 	defaults := DefaultGitSymbols()
 	if cfg.Modules.Git.Symbols.Unstaged == "" {
@@ -174,6 +184,44 @@ func Load(path string) *Config {
 	}
 
 	return cfg
+}
+
+// extractModuleOrder parses the YAML with goccy/go-yaml MapSlice
+// to extract the key order of the "modules" section.
+func extractModuleOrder(data []byte) []string {
+	var raw goyaml.MapSlice
+	if err := goyaml.UnmarshalWithOptions(data, &raw, goyaml.UseOrderedMap()); err != nil {
+		return DefaultModuleOrder
+	}
+
+	// Find "modules" key
+	for _, item := range raw {
+		if key, ok := item.Key.(string); ok && key == "modules" {
+			if modules, ok := item.Value.(goyaml.MapSlice); ok {
+				var order []string
+				for _, m := range modules {
+					if name, ok := m.Key.(string); ok {
+						order = append(order, name)
+					}
+				}
+				if len(order) > 0 {
+					// Append any default modules not in config
+					seen := make(map[string]bool)
+					for _, name := range order {
+						seen[name] = true
+					}
+					for _, name := range DefaultModuleOrder {
+						if !seen[name] {
+							order = append(order, name)
+						}
+					}
+					return order
+				}
+			}
+		}
+	}
+
+	return DefaultModuleOrder
 }
 
 func GenerateDefault() string {
