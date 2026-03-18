@@ -292,6 +292,18 @@ modules:
 
 Modules not listed in the config file are appended in default order (`cwd`, `git`, `kube`, `gcp`, `claude`). No separate `order` field is needed.
 
+Sub-keys within a module (e.g. `git.url`, `git.sign`) can be reordered with the `order` field:
+
+```yaml
+modules:
+  git:
+    order: [sign, cwd, url, status]  # default: [url, sign, cwd, status]
+  claude:
+    order: [config, usage]           # default: [usage, config]
+```
+
+Sub-keys not listed in `order` are appended at the end. Omit `order` to use the default.
+
 ### Git Symbols
 
 The `symbols` map in the git config customizes the status indicators shown in `git.sign`:
