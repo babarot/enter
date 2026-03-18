@@ -2,7 +2,7 @@
 
 Show contextual info every time you press Enter in your shell.
 
-![903c105182d8f49a](https://assets.babarot.dev/files/2026/03/903c105182d8f49a.png)
+![](https://assets.babarot.dev/files/2026/03/ed1c76d931bd9f89.png)
 
 ## Install
 
