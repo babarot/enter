@@ -4,8 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	goyaml "github.com/goccy/go-yaml"
-	"gopkg.in/yaml.v3"
+	"github.com/goccy/go-yaml"
 )
 
 type Config struct {
@@ -164,6 +163,9 @@ func Load(path string) *Config {
 	// Extract module order from YAML key order using goccy/go-yaml
 	cfg.ModuleOrder = extractModuleOrder(data)
 
+	// Validate and normalize config values
+	cfg.validate()
+
 	// Fill empty symbols with defaults
 	defaults := DefaultGitSymbols()
 	if cfg.Modules.Git.Symbols.Unstaged == "" {
@@ -188,18 +190,54 @@ func Load(path string) *Config {
 	return cfg
 }
 
+func (c *Config) validate() {
+	d := Default()
+
+	if c.Format != "table" && c.Format != "inline" {
+		c.Format = d.Format
+	}
+	if c.Trigger != "always" && c.Trigger != "on_cd" {
+		c.Trigger = d.Trigger
+	}
+	if c.KeyStyle != "flat" && c.KeyStyle != "tree" {
+		c.KeyStyle = d.KeyStyle
+	}
+
+	git := &c.Modules.Git
+	if git.TreeStyle != "breadcrumb" && git.TreeStyle != "tree" {
+		git.TreeStyle = d.Modules.Git.TreeStyle
+	}
+	if git.StatusStyle != "short" && git.StatusStyle != "long" {
+		git.StatusStyle = d.Modules.Git.StatusStyle
+	}
+
+	cl := &c.Modules.Claude
+	if cl.Mode != "always" && cl.Mode != "auto" {
+		cl.Mode = d.Modules.Claude.Mode
+	}
+	if cl.BarStyle != "block" && cl.BarStyle != "dot" && cl.BarStyle != "fill" {
+		cl.BarStyle = d.Modules.Claude.BarStyle
+	}
+	if cl.TimeStyle != "absolute" && cl.TimeStyle != "relative" {
+		cl.TimeStyle = d.Modules.Claude.TimeStyle
+	}
+	if cl.CacheTTL <= 0 {
+		cl.CacheTTL = d.Modules.Claude.CacheTTL
+	}
+}
+
 // extractModuleOrder parses the YAML with goccy/go-yaml MapSlice
 // to extract the key order of the "modules" section.
 func extractModuleOrder(data []byte) []string {
-	var raw goyaml.MapSlice
-	if err := goyaml.UnmarshalWithOptions(data, &raw, goyaml.UseOrderedMap()); err != nil {
+	var raw yaml.MapSlice
+	if err := yaml.UnmarshalWithOptions(data, &raw, yaml.UseOrderedMap()); err != nil {
 		return DefaultModuleOrder
 	}
 
 	// Find "modules" key
 	for _, item := range raw {
 		if key, ok := item.Key.(string); ok && key == "modules" {
-			if modules, ok := item.Value.(goyaml.MapSlice); ok {
+			if modules, ok := item.Value.(yaml.MapSlice); ok {
 				var order []string
 				for _, m := range modules {
 					if name, ok := m.Key.(string); ok {
