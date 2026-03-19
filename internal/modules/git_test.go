@@ -316,7 +316,7 @@ func TestGitModuleShowRepo(t *testing.T) {
 
 	m := &GitModule{}
 	cfg := config.Default()
-	cfg.Modules.Git.Fields.Url.Enabled = true
+	// Url is present by default from Default()
 	ctx := &module.Context{Cwd: dir, Config: cfg}
 
 	out := m.Run(ctx)
@@ -349,7 +349,7 @@ func TestGitModuleShowTree(t *testing.T) {
 
 	m := &GitModule{}
 	cfg := config.Default()
-	cfg.Modules.Git.Fields.Cwd.Enabled = true
+	// Cwd is present by default from Default()
 	ctx := &module.Context{Cwd: subdir, Config: cfg}
 
 	out := m.Run(ctx)
@@ -375,7 +375,7 @@ func TestGitModuleShowStatus(t *testing.T) {
 
 	m := &GitModule{}
 	cfg := config.Default()
-	cfg.Modules.Git.Fields.Status.Enabled = true
+	// Status is present by default from Default()
 	ctx := &module.Context{Cwd: dir, Config: cfg}
 
 	out := m.Run(ctx)

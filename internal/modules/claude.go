@@ -44,13 +44,15 @@ func (m *ClaudeModule) Run(ctx *module.Context) *module.Output {
 	var rows []module.Row
 
 	// Usage (5h + 7d windows)
-	usageSegs, usageRows := buildUsageOutput(cfg)
-	segments = append(segments, usageSegs...)
-	rows = append(rows, usageRows...)
+	if cfg.Fields.Usage.Present() {
+		usageSegs, usageRows := buildUsageOutput(cfg)
+		segments = append(segments, usageSegs...)
+		rows = append(rows, usageRows...)
+	}
 
 	// Config view
-	if cfg.Fields.Config.Enabled {
-		configSegs, configRow := buildConfigOutput(ctx.Cwd, cfg.Fields.Config.Mode)
+	if cfg.Fields.Config.Present() {
+		configSegs, configRow := buildConfigOutput(ctx.Cwd, cfg.Fields.Config.Get().Mode)
 		if configRow != nil {
 			rows = append(rows, *configRow)
 			if len(segments) > 0 {
@@ -72,13 +74,14 @@ func (m *ClaudeModule) Run(ctx *module.Context) *module.Output {
 }
 
 func buildUsageOutput(cfg *config.ClaudeConfig) ([]module.Segment, []module.Row) {
-	usage := fetchUsage(cfg.Fields.Usage.CacheTTL)
+	usageCfg := cfg.Fields.Usage.Get()
+	usage := fetchUsage(usageCfg.CacheTTL)
 	if usage == nil {
 		return nil, nil
 	}
 
-	barStyle := cfg.Fields.Usage.BarStyle
-	timeStyle := cfg.Fields.Usage.TimeStyle
+	barStyle := usageCfg.BarStyle
+	timeStyle := usageCfg.TimeStyle
 	barWidth := 10
 
 	var segments []module.Segment

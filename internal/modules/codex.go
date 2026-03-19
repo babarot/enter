@@ -23,7 +23,11 @@ func (m *CodexModule) Run(ctx *module.Context) *module.Output {
 		return nil
 	}
 
-	segs, row := buildCodexConfigOutput(ctx.Cwd, cfg.Fields.Config.Mode)
+	if !cfg.Fields.Config.Present() {
+		return nil
+	}
+
+	segs, row := buildCodexConfigOutput(ctx.Cwd, cfg.Fields.Config.Get().Mode)
 	if row == nil {
 		return nil
 	}
