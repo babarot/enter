@@ -37,7 +37,7 @@ func (m *KubeModule) Run(ctx *module.Context) *module.Output {
 
 	// Clean context name
 	displayContext := info.context
-	if ctx.Config.Modules.Kube.Context.Clean {
+	if ctx.Config.Modules.Kube.Fields.Context.Clean {
 		displayContext = cleanContext(info.context)
 	}
 

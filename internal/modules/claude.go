@@ -49,8 +49,8 @@ func (m *ClaudeModule) Run(ctx *module.Context) *module.Output {
 	rows = append(rows, usageRows...)
 
 	// Config view
-	if cfg.Config.Enabled {
-		configSegs, configRow := buildConfigOutput(ctx.Cwd, cfg.Config.Mode)
+	if cfg.Fields.Config.Enabled {
+		configSegs, configRow := buildConfigOutput(ctx.Cwd, cfg.Fields.Config.Mode)
 		if configRow != nil {
 			rows = append(rows, *configRow)
 			if len(segments) > 0 {
@@ -72,13 +72,13 @@ func (m *ClaudeModule) Run(ctx *module.Context) *module.Output {
 }
 
 func buildUsageOutput(cfg *config.ClaudeConfig) ([]module.Segment, []module.Row) {
-	usage := fetchUsage(cfg.Usage.CacheTTL)
+	usage := fetchUsage(cfg.Fields.Usage.CacheTTL)
 	if usage == nil {
 		return nil, nil
 	}
 
-	barStyle := cfg.Usage.BarStyle
-	timeStyle := cfg.Usage.TimeStyle
+	barStyle := cfg.Fields.Usage.BarStyle
+	timeStyle := cfg.Fields.Usage.TimeStyle
 	barWidth := 10
 
 	var segments []module.Segment

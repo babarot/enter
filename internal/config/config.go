@@ -157,13 +157,17 @@ type CwdConfig struct {
 }
 
 type GitConfig struct {
-	Enabled   bool             `yaml:"enabled"`
-	Indicator bool             `yaml:"indicator"`
-	Url       GitUrlConfig     `yaml:"url"`
-	Cwd       GitCwdConfig     `yaml:"cwd"`
-	Summary   GitSummaryConfig `yaml:"summary"`
-	Status    GitStatusConfig  `yaml:"status"`
-	When      *When            `yaml:"when"`
+	Enabled   bool      `yaml:"enabled"`
+	Indicator bool      `yaml:"indicator"`
+	Fields    GitFields `yaml:"fields"`
+	When      *When     `yaml:"when"`
+}
+
+type GitFields struct {
+	Url     GitUrlConfig     `yaml:"url"`
+	Cwd     GitCwdConfig     `yaml:"cwd"`
+	Summary GitSummaryConfig `yaml:"summary"`
+	Status  GitStatusConfig  `yaml:"status"`
 }
 
 type GitUrlConfig struct {
@@ -194,9 +198,13 @@ type GitSymbols struct {
 }
 
 type KubeConfig struct {
-	Enabled bool              `yaml:"enabled"`
+	Enabled bool       `yaml:"enabled"`
+	Fields  KubeFields `yaml:"fields"`
+	When    *When      `yaml:"when"`
+}
+
+type KubeFields struct {
 	Context KubeContextConfig `yaml:"context"`
-	When    *When             `yaml:"when"`
 }
 
 type KubeContextConfig struct {
@@ -204,16 +212,23 @@ type KubeContextConfig struct {
 }
 
 type GcpConfig struct {
-	Enabled bool  `yaml:"enabled"`
-	When    *When `yaml:"when"`
+	Enabled bool      `yaml:"enabled"`
+	Fields  GcpFields `yaml:"fields"`
+	When    *When     `yaml:"when"`
 }
 
+type GcpFields struct{} // reserved for future per-field config
+
 type ClaudeConfig struct {
-	Enabled bool              `yaml:"enabled"`
-	Mode    string            `yaml:"mode"` // "always" | "auto"
-	Usage   ClaudeUsageConfig `yaml:"usage"`
-	Config  ClaudeConfigView  `yaml:"config"`
-	When    *When             `yaml:"when"`
+	Enabled bool         `yaml:"enabled"`
+	Mode    string       `yaml:"mode"` // "always" | "auto"
+	Fields  ClaudeFields `yaml:"fields"`
+	When    *When        `yaml:"when"`
+}
+
+type ClaudeFields struct {
+	Usage  ClaudeUsageConfig `yaml:"usage"`
+	Config ClaudeConfigView  `yaml:"config"`
 }
 
 type ClaudeUsageConfig struct {
@@ -228,10 +243,14 @@ type ClaudeConfigView struct {
 }
 
 type CodexConfig struct {
-	Enabled bool            `yaml:"enabled"`
-	Mode    string          `yaml:"mode"` // "always" | "auto"
-	Config  CodexConfigView `yaml:"config"`
-	When    *When           `yaml:"when"`
+	Enabled bool        `yaml:"enabled"`
+	Mode    string      `yaml:"mode"` // "always" | "auto"
+	Fields  CodexFields `yaml:"fields"`
+	When    *When       `yaml:"when"`
+}
+
+type CodexFields struct {
+	Config CodexConfigView `yaml:"config"`
 }
 
 type CodexConfigView struct {
@@ -277,14 +296,18 @@ func Default() *Config {
 			Git: GitConfig{
 				Enabled:   true,
 				Indicator: true,
-				Url:       GitUrlConfig{Enabled: true},
-				Cwd:       GitCwdConfig{Enabled: true, Style: GitCwdStyleTree},
-				Summary:   GitSummaryConfig{Symbols: DefaultGitSymbols()},
-				Status:    GitStatusConfig{Enabled: true, Style: GitStatusStyleShort},
+				Fields: GitFields{
+					Url:     GitUrlConfig{Enabled: true},
+					Cwd:     GitCwdConfig{Enabled: true, Style: GitCwdStyleTree},
+					Summary: GitSummaryConfig{Symbols: DefaultGitSymbols()},
+					Status:  GitStatusConfig{Enabled: true, Style: GitStatusStyleShort},
+				},
 			},
 			Kube: KubeConfig{
 				Enabled: false,
-				Context: KubeContextConfig{Clean: true},
+				Fields: KubeFields{
+					Context: KubeContextConfig{Clean: true},
+				},
 			},
 			Gcp: GcpConfig{
 				Enabled: false,
@@ -292,22 +315,26 @@ func Default() *Config {
 			Claude: ClaudeConfig{
 				Enabled: true,
 				Mode:    ClaudeModeAuto,
-				Usage: ClaudeUsageConfig{
-					BarStyle:  BarStyleBlock,
-					TimeStyle: TimeStyleAbsolute,
-					CacheTTL:  120,
-				},
-				Config: ClaudeConfigView{
-					Enabled: true,
-					Mode:    ClaudeModeAuto,
+				Fields: ClaudeFields{
+					Usage: ClaudeUsageConfig{
+						BarStyle:  BarStyleBlock,
+						TimeStyle: TimeStyleAbsolute,
+						CacheTTL:  120,
+					},
+					Config: ClaudeConfigView{
+						Enabled: true,
+						Mode:    ClaudeModeAuto,
+					},
 				},
 			},
 			Codex: CodexConfig{
 				Enabled: true,
 				Mode:    CodexModeAuto,
-				Config: CodexConfigView{
-					Enabled: true,
-					Mode:    CodexModeAuto,
+				Fields: CodexFields{
+					Config: CodexConfigView{
+						Enabled: true,
+						Mode:    CodexModeAuto,
+					},
 				},
 			},
 		},
@@ -357,7 +384,7 @@ func Load(path string) *Config {
 
 	// Fill empty symbols with defaults
 	defaults := DefaultGitSymbols()
-	sym := &cfg.Modules.Git.Summary.Symbols
+	sym := &cfg.Modules.Git.Fields.Summary.Symbols
 	if sym.Unstaged == "" {
 		sym.Unstaged = defaults.Unstaged
 	}
@@ -393,28 +420,28 @@ func (c *Config) validate() {
 		c.KeyStyle = d.KeyStyle
 	}
 
-	gitCwd := &c.Modules.Git.Cwd
+	gitCwd := &c.Modules.Git.Fields.Cwd
 	if gitCwd.Style != GitCwdStyleBreadcrumb && gitCwd.Style != GitCwdStyleTree {
-		gitCwd.Style = d.Modules.Git.Cwd.Style
+		gitCwd.Style = d.Modules.Git.Fields.Cwd.Style
 	}
-	gitStatus := &c.Modules.Git.Status
+	gitStatus := &c.Modules.Git.Fields.Status
 	if gitStatus.Style != GitStatusStyleShort && gitStatus.Style != GitStatusStyleLong {
-		gitStatus.Style = d.Modules.Git.Status.Style
+		gitStatus.Style = d.Modules.Git.Fields.Status.Style
 	}
 
 	cl := &c.Modules.Claude
 	if cl.Mode != ClaudeModeAlways && cl.Mode != ClaudeModeAuto {
 		cl.Mode = d.Modules.Claude.Mode
 	}
-	usage := &cl.Usage
+	usage := &cl.Fields.Usage
 	if usage.BarStyle != BarStyleBlock && usage.BarStyle != BarStyleDot && usage.BarStyle != BarStyleFill {
-		usage.BarStyle = d.Modules.Claude.Usage.BarStyle
+		usage.BarStyle = d.Modules.Claude.Fields.Usage.BarStyle
 	}
 	if usage.TimeStyle != TimeStyleAbsolute && usage.TimeStyle != TimeStyleRelative {
-		usage.TimeStyle = d.Modules.Claude.Usage.TimeStyle
+		usage.TimeStyle = d.Modules.Claude.Fields.Usage.TimeStyle
 	}
 	if usage.CacheTTL <= 0 {
-		usage.CacheTTL = d.Modules.Claude.Usage.CacheTTL
+		usage.CacheTTL = d.Modules.Claude.Fields.Usage.CacheTTL
 	}
 
 	cx := &c.Modules.Codex
@@ -445,12 +472,33 @@ func extractOrder(data []byte) ([]string, map[string][]string) {
 					}
 					moduleOrder = append(moduleOrder, name)
 
-					// Extract sub-key order from this module's keys
+					// Extract sub-key order from this module's "fields" key,
+				// or fall back to top-level keys for single-key modules.
 					if modValue, ok := m.Value.(yaml.MapSlice); ok {
 						var subKeys []string
+						foundFields := false
 						for _, field := range modValue {
-							if fieldName, ok := field.Key.(string); ok {
-								subKeys = append(subKeys, fieldName)
+							fieldName, ok := field.Key.(string)
+							if !ok {
+								continue
+							}
+							if fieldName == "fields" {
+								if fieldsValue, ok := field.Value.(yaml.MapSlice); ok {
+									for _, f := range fieldsValue {
+										if fk, ok := f.Key.(string); ok {
+											subKeys = append(subKeys, fk)
+										}
+									}
+								}
+								foundFields = true
+								break
+							}
+						}
+						if !foundFields {
+							for _, field := range modValue {
+								if fieldName, ok := field.Key.(string); ok {
+									subKeys = append(subKeys, fieldName)
+								}
 							}
 						}
 						if len(subKeys) > 0 {
@@ -503,27 +551,29 @@ modules:
   git:
     enabled: true
     indicator: true         # show "not a git repo" outside repos
-    url:
-      enabled: true
-    cwd:
-      enabled: true
-      style: "tree"         # breadcrumb | tree
-    summary:
-      symbols:
-        unstaged: "*"
-        staged: "+"
-        stash: "$"
-        untracked: "%"
-        ahead: "↑"
-        behind: "↓"
-    status:
-      enabled: true
-      style: "short"        # short | long
+    fields:
+      url:
+        enabled: true
+      cwd:
+        enabled: true
+        style: "tree"       # breadcrumb | tree
+      summary:
+        symbols:
+          unstaged: "*"
+          staged: "+"
+          stash: "$"
+          untracked: "%"
+          ahead: "↑"
+          behind: "↓"
+      status:
+        enabled: true
+        style: "short"      # short | long
 
   kube:
     enabled: false
-    context:
-      clean: true           # strip cloud provider prefixes (GKE/EKS/AKS)
+    fields:
+      context:
+        clean: true         # strip cloud provider prefixes (GKE/EKS/AKS)
 
   gcp:
     enabled: false
@@ -533,19 +583,21 @@ modules:
   claude:
     enabled: true
     mode: "auto"            # always | auto
-    usage:
-      bar_style: "block"    # block (▰▱) | dot (●○) | fill (█░)
-      time_style: "absolute" # absolute (3:00pm) | relative (22m left)
-      cache_ttl: 120        # cache duration in seconds
-    config:
-      enabled: true
-      mode: "auto"          # always (show ✓/✗) | auto (show existing only)
+    fields:
+      usage:
+        bar_style: "block"  # block (▰▱) | dot (●○) | fill (█░)
+        time_style: "absolute" # absolute (3:00pm) | relative (22m left)
+        cache_ttl: 120      # cache duration in seconds
+      config:
+        enabled: true
+        mode: "auto"        # always (show ✓/✗) | auto (show existing only)
 
   codex:
     enabled: true
     mode: "auto"            # always | auto
-    config:
-      enabled: true
-      mode: "auto"          # always (show ✓/✗) | auto (show existing only)
+    fields:
+      config:
+        enabled: true
+        mode: "auto"        # always (show ✓/✗) | auto (show existing only)
 `
 }

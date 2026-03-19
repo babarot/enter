@@ -129,27 +129,29 @@ modules:
   git:
     enabled: true
     indicator: true           # show "not a git repo" outside repos
-    url:
-      enabled: true           # repository HTTPS URL (parsed from remote)
-    cwd:
-      enabled: true
-      style: "tree"           # breadcrumb | tree
-    summary:
-      symbols:
-        unstaged: "*"
-        staged: "+"
-        stash: "$"
-        untracked: "%"
-        ahead: "↑"
-        behind: "↓"
-    status:
-      enabled: true
-      style: "short"          # short | long
+    fields:
+      url:
+        enabled: true         # repository HTTPS URL (parsed from remote)
+      cwd:
+        enabled: true
+        style: "tree"         # breadcrumb | tree
+      summary:
+        symbols:
+          unstaged: "*"
+          staged: "+"
+          stash: "$"
+          untracked: "%"
+          ahead: "↑"
+          behind: "↓"
+      status:
+        enabled: true
+        style: "short"        # short | long
 
   kube:
     enabled: false
-    context:
-      clean: true             # strip cloud provider prefixes (GKE/EKS/AKS)
+    fields:
+      context:
+        clean: true           # strip cloud provider prefixes (GKE/EKS/AKS)
 
   gcp:
     enabled: false
@@ -159,20 +161,22 @@ modules:
   claude:
     enabled: true
     mode: "auto"              # always | auto
-    usage:
-      bar_style: "block"      # block (▰▱) | dot (●○) | fill (█░)
-      time_style: "absolute"  # absolute (3:00pm) | relative (22m left)
-      cache_ttl: 120          # cache duration in seconds
-    config:
-      enabled: true
-      mode: "auto"            # always (show ✓/✗) | auto (show existing only)
+    fields:
+      usage:
+        bar_style: "block"    # block (▰▱) | dot (●○) | fill (█░)
+        time_style: "absolute" # absolute (3:00pm) | relative (22m left)
+        cache_ttl: 120        # cache duration in seconds
+      config:
+        enabled: true
+        mode: "auto"          # always (show ✓/✗) | auto (show existing only)
 
   codex:
     enabled: true
     mode: "auto"              # always | auto
-    config:
-      enabled: true
-      mode: "auto"            # always (show ✓/✗) | auto (show existing only)
+    fields:
+      config:
+        enabled: true
+        mode: "auto"          # always (show ✓/✗) | auto (show existing only)
 ```
 
 ### Table Row Keys
@@ -180,11 +184,11 @@ modules:
 | Key | Source | Description |
 |-----|--------|-------------|
 | `cwd` | cwd module | Current working directory |
-| `git.url` | `url.enabled: true` | Repository HTTPS URL |
-| `git.cwd` | `cwd.enabled: true` | Position in repo (breadcrumb or tree) |
+| `git.url` | `fields.url.enabled: true` | Repository HTTPS URL |
+| `git.cwd` | `fields.cwd.enabled: true` | Position in repo (breadcrumb or tree) |
 | `git.summary` | always (when in repo) | Branch, flags, ahead/behind, operation |
-| `git.status` | `status.enabled: true` | git status output (short or long) |
-| `kube.context` | kube module | Kubernetes context (cleaned if `context.clean: true`) |
+| `git.status` | `fields.status.enabled: true` | git status output (short or long) |
+| `kube.context` | kube module | Kubernetes context (cleaned if `fields.context.clean: true`) |
 | `kube.namespace` | kube module | Kubernetes namespace (defaults to "default") |
 | `kube.cluster` | kube module | Kubernetes cluster name |
 | `gcp.project` | gcp module | GCP project name |
@@ -193,8 +197,8 @@ modules:
 | `gcp.config` | gcp module | Active gcloud config (hidden if "default") |
 | `claude.usage.5h` | claude module | 5-hour rolling window utilization |
 | `claude.usage.7d` | claude module | 7-day rolling window utilization |
-| `claude.config` | `config.enabled: true` | Project config status (CLAUDE.md, rules, skills, etc.) |
-| `codex.config` | `config.enabled: true` | Project config status (AGENTS.md, config.toml, etc.) |
+| `claude.config` | `fields.config.enabled: true` | Project config status (CLAUDE.md, rules, skills, etc.) |
+| `codex.config` | `fields.config.enabled: true` | Project config status (AGENTS.md, config.toml, etc.) |
 
 ### Themes
 
@@ -225,19 +229,21 @@ modules:
 
 Modules not listed in the config file are appended in default order (`cwd`, `git`, `kube`, `gcp`, `claude`, `codex`).
 
-Sub-keys within a module are also ordered by their position in the config file. Simply reorder the sections:
+Sub-keys within a module are also ordered by their position in the `fields` section. Simply reorder the sections:
 
 ```yaml
 modules:
   git:
-    status:      # ← shown first
-      enabled: true
-    summary:        # ← shown second
-      symbols: ...
-    cwd:         # ← shown third
-      enabled: true
-    url:         # ← shown fourth
-      enabled: true
+    enabled: true
+    fields:
+      status:      # ← shown first
+        enabled: true
+      summary:     # ← shown second
+        symbols: ...
+      cwd:         # ← shown third
+        enabled: true
+      url:         # ← shown fourth
+        enabled: true
 ```
 
 No separate `order` field is needed. Both module order and sub-key order are driven entirely by YAML key order.
