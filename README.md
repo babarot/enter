@@ -224,7 +224,17 @@ modules:
 
 Modules not listed in the config file are appended in default order (`cwd`, `git`, `kube`, `gcp`, `claude`, `codex`).
 
-Sub-keys within a module are also ordered by their position in the `fields` section. Simply reorder the sections — and omit fields you don't want:
+### Field Visibility
+
+Each module's `fields:` section controls **which fields are displayed** and **in what order**. Visibility is determined by presence — there is no `enabled` flag on individual fields.
+
+| Situation | Behavior |
+|-----------|----------|
+| `fields:` not specified | All fields shown in default order |
+| `fields:` with listed keys | Only listed fields shown, in listed order |
+| Empty key (e.g. `url:`) | Field is shown with default settings |
+| Field omitted from `fields:` | Field is hidden |
+| `fields:` with no keys | Warning emitted, no fields shown |
 
 ```yaml
 modules:
@@ -240,7 +250,7 @@ modules:
       # url is omitted → hidden
 ```
 
-No separate `order` field is needed. Both module order and sub-key order are driven entirely by YAML key order. If `fields:` is not specified at all, all fields are shown in default order.
+No separate `order` field is needed. Both module order and sub-key order are driven entirely by YAML key order.
 
 ### Conditional Display
 
