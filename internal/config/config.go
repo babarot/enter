@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -164,19 +165,16 @@ type GitConfig struct {
 }
 
 type GitFields struct {
-	Url     GitUrlConfig     `yaml:"url"`
-	Cwd     GitCwdConfig     `yaml:"cwd"`
-	Summary GitSummaryConfig `yaml:"summary"`
-	Status  GitStatusConfig  `yaml:"status"`
+	Url     Field[GitUrlConfig]     `yaml:"url"`
+	Cwd     Field[GitCwdConfig]     `yaml:"cwd"`
+	Summary Field[GitSummaryConfig] `yaml:"summary"`
+	Status  Field[GitStatusConfig]  `yaml:"status"`
 }
 
-type GitUrlConfig struct {
-	Enabled bool `yaml:"enabled"`
-}
+type GitUrlConfig struct{}
 
 type GitCwdConfig struct {
-	Enabled bool   `yaml:"enabled"`
-	Style   string `yaml:"style"` // "breadcrumb" | "tree"
+	Style string `yaml:"style"` // "breadcrumb" | "tree"
 }
 
 type GitSummaryConfig struct {
@@ -184,8 +182,7 @@ type GitSummaryConfig struct {
 }
 
 type GitStatusConfig struct {
-	Enabled bool   `yaml:"enabled"`
-	Style   string `yaml:"style"` // "short" | "long"
+	Style string `yaml:"style"` // "short" | "long"
 }
 
 type GitSymbols struct {
@@ -204,7 +201,7 @@ type KubeConfig struct {
 }
 
 type KubeFields struct {
-	Context KubeContextConfig `yaml:"context"`
+	Context Field[KubeContextConfig] `yaml:"context"`
 }
 
 type KubeContextConfig struct {
@@ -227,8 +224,8 @@ type ClaudeConfig struct {
 }
 
 type ClaudeFields struct {
-	Usage  ClaudeUsageConfig `yaml:"usage"`
-	Config ClaudeConfigView  `yaml:"config"`
+	Usage  Field[ClaudeUsageConfig] `yaml:"usage"`
+	Config Field[ClaudeConfigView]  `yaml:"config"`
 }
 
 type ClaudeUsageConfig struct {
@@ -238,8 +235,7 @@ type ClaudeUsageConfig struct {
 }
 
 type ClaudeConfigView struct {
-	Enabled bool   `yaml:"enabled"`
-	Mode    string `yaml:"mode"` // "always" | "auto"
+	Mode string `yaml:"mode"` // "always" | "auto"
 }
 
 type CodexConfig struct {
@@ -250,12 +246,11 @@ type CodexConfig struct {
 }
 
 type CodexFields struct {
-	Config CodexConfigView `yaml:"config"`
+	Config Field[CodexConfigView] `yaml:"config"`
 }
 
 type CodexConfigView struct {
-	Enabled bool   `yaml:"enabled"`
-	Mode    string `yaml:"mode"` // "always" | "auto"
+	Mode string `yaml:"mode"` // "always" | "auto"
 }
 
 // WhenFor returns the When condition for the named module, or nil if none is set.
@@ -297,16 +292,16 @@ func Default() *Config {
 				Enabled:   true,
 				Indicator: true,
 				Fields: GitFields{
-					Url:     GitUrlConfig{Enabled: true},
-					Cwd:     GitCwdConfig{Enabled: true, Style: GitCwdStyleTree},
-					Summary: GitSummaryConfig{Symbols: DefaultGitSymbols()},
-					Status:  GitStatusConfig{Enabled: true, Style: GitStatusStyleShort},
+					Url:     NewField(GitUrlConfig{}),
+					Cwd:     NewField(GitCwdConfig{Style: GitCwdStyleTree}),
+					Summary: NewField(GitSummaryConfig{Symbols: DefaultGitSymbols()}),
+					Status:  NewField(GitStatusConfig{Style: GitStatusStyleShort}),
 				},
 			},
 			Kube: KubeConfig{
 				Enabled: false,
 				Fields: KubeFields{
-					Context: KubeContextConfig{Clean: true},
+					Context: NewField(KubeContextConfig{Clean: true}),
 				},
 			},
 			Gcp: GcpConfig{
@@ -316,25 +311,23 @@ func Default() *Config {
 				Enabled: true,
 				Mode:    ClaudeModeAuto,
 				Fields: ClaudeFields{
-					Usage: ClaudeUsageConfig{
+					Usage: NewField(ClaudeUsageConfig{
 						BarStyle:  BarStyleBlock,
 						TimeStyle: TimeStyleAbsolute,
 						CacheTTL:  120,
-					},
-					Config: ClaudeConfigView{
-						Enabled: true,
-						Mode:    ClaudeModeAuto,
-					},
+					}),
+					Config: NewField(ClaudeConfigView{
+						Mode: ClaudeModeAuto,
+					}),
 				},
 			},
 			Codex: CodexConfig{
 				Enabled: true,
 				Mode:    CodexModeAuto,
 				Fields: CodexFields{
-					Config: CodexConfigView{
-						Enabled: true,
-						Mode:    CodexModeAuto,
-					},
+					Config: NewField(CodexConfigView{
+						Mode: CodexModeAuto,
+					}),
 				},
 			},
 		},
@@ -372,36 +365,75 @@ func Load(path string) *Config {
 	}
 
 	cfg := Default()
+
+	// Reset all Fields to zero values before Unmarshal so that
+	// Field[T].Present() accurately reflects YAML key presence.
+	cfg.Modules.Git.Fields = GitFields{}
+	cfg.Modules.Kube.Fields = KubeFields{}
+	cfg.Modules.Claude.Fields = ClaudeFields{}
+	cfg.Modules.Codex.Fields = CodexFields{}
+
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return Default()
 	}
 
-	// Extract module and sub-key order from YAML key order
-	cfg.ModuleOrder, cfg.SubKeyOrder = extractOrder(data)
+	// Extract module order, sub-key order, and which modules have "fields:" in YAML
+	var fieldsPresent map[string]bool
+	cfg.ModuleOrder, cfg.SubKeyOrder, fieldsPresent = extractOrder(data)
+
+	// Restore default fields for modules that don't have "fields:" in YAML
+	defaults := Default()
+	if !fieldsPresent[ModuleGit] {
+		cfg.Modules.Git.Fields = defaults.Modules.Git.Fields
+	} else {
+		// Mark empty-key fields as present (YAML unmarshaler is not called for null values)
+		ensureFieldsPresent(cfg.SubKeyOrder[ModuleGit], &cfg.Modules.Git.Fields)
+	}
+	if !fieldsPresent[ModuleKube] {
+		cfg.Modules.Kube.Fields = defaults.Modules.Kube.Fields
+	} else {
+		ensureFieldsPresent(cfg.SubKeyOrder[ModuleKube], &cfg.Modules.Kube.Fields)
+	}
+	if !fieldsPresent[ModuleClaude] {
+		cfg.Modules.Claude.Fields = defaults.Modules.Claude.Fields
+	} else {
+		ensureFieldsPresent(cfg.SubKeyOrder[ModuleClaude], &cfg.Modules.Claude.Fields)
+	}
+	if !fieldsPresent[ModuleCodex] {
+		cfg.Modules.Codex.Fields = defaults.Modules.Codex.Fields
+	} else {
+		ensureFieldsPresent(cfg.SubKeyOrder[ModuleCodex], &cfg.Modules.Codex.Fields)
+	}
+
+	// Warn about empty fields and deprecated "enabled" key
+	warnFieldsConfig(data, fieldsPresent, cfg.SubKeyOrder)
 
 	// Validate and normalize config values
 	cfg.validate()
 
-	// Fill empty symbols with defaults
-	defaults := DefaultGitSymbols()
-	sym := &cfg.Modules.Git.Fields.Summary.Symbols
-	if sym.Unstaged == "" {
-		sym.Unstaged = defaults.Unstaged
-	}
-	if sym.Staged == "" {
-		sym.Staged = defaults.Staged
-	}
-	if sym.Stash == "" {
-		sym.Stash = defaults.Stash
-	}
-	if sym.Untracked == "" {
-		sym.Untracked = defaults.Untracked
-	}
-	if sym.Ahead == "" {
-		sym.Ahead = defaults.Ahead
-	}
-	if sym.Behind == "" {
-		sym.Behind = defaults.Behind
+	// Fill empty git symbols with defaults
+	if cfg.Modules.Git.Fields.Summary.Present() {
+		s := cfg.Modules.Git.Fields.Summary.Get()
+		defSym := DefaultGitSymbols()
+		if s.Symbols.Unstaged == "" {
+			s.Symbols.Unstaged = defSym.Unstaged
+		}
+		if s.Symbols.Staged == "" {
+			s.Symbols.Staged = defSym.Staged
+		}
+		if s.Symbols.Stash == "" {
+			s.Symbols.Stash = defSym.Stash
+		}
+		if s.Symbols.Untracked == "" {
+			s.Symbols.Untracked = defSym.Untracked
+		}
+		if s.Symbols.Ahead == "" {
+			s.Symbols.Ahead = defSym.Ahead
+		}
+		if s.Symbols.Behind == "" {
+			s.Symbols.Behind = defSym.Behind
+		}
+		cfg.Modules.Git.Fields.Summary.Set(s)
 	}
 
 	return cfg
@@ -420,42 +452,167 @@ func (c *Config) validate() {
 		c.KeyStyle = d.KeyStyle
 	}
 
-	gitCwd := &c.Modules.Git.Fields.Cwd
-	if gitCwd.Style != GitCwdStyleBreadcrumb && gitCwd.Style != GitCwdStyleTree {
-		gitCwd.Style = d.Modules.Git.Fields.Cwd.Style
+	// Git fields
+	if c.Modules.Git.Fields.Cwd.Present() {
+		cwd := c.Modules.Git.Fields.Cwd.Get()
+		if cwd.Style != GitCwdStyleBreadcrumb && cwd.Style != GitCwdStyleTree {
+			cwd.Style = d.Modules.Git.Fields.Cwd.Get().Style
+		}
+		c.Modules.Git.Fields.Cwd.Set(cwd)
 	}
-	gitStatus := &c.Modules.Git.Fields.Status
-	if gitStatus.Style != GitStatusStyleShort && gitStatus.Style != GitStatusStyleLong {
-		gitStatus.Style = d.Modules.Git.Fields.Status.Style
+	if c.Modules.Git.Fields.Status.Present() {
+		st := c.Modules.Git.Fields.Status.Get()
+		if st.Style != GitStatusStyleShort && st.Style != GitStatusStyleLong {
+			st.Style = d.Modules.Git.Fields.Status.Get().Style
+		}
+		c.Modules.Git.Fields.Status.Set(st)
 	}
 
+	// Claude
 	cl := &c.Modules.Claude
 	if cl.Mode != ClaudeModeAlways && cl.Mode != ClaudeModeAuto {
 		cl.Mode = d.Modules.Claude.Mode
 	}
-	usage := &cl.Fields.Usage
-	if usage.BarStyle != BarStyleBlock && usage.BarStyle != BarStyleDot && usage.BarStyle != BarStyleFill {
-		usage.BarStyle = d.Modules.Claude.Fields.Usage.BarStyle
+	if cl.Fields.Usage.Present() {
+		u := cl.Fields.Usage.Get()
+		du := d.Modules.Claude.Fields.Usage.Get()
+		if u.BarStyle != BarStyleBlock && u.BarStyle != BarStyleDot && u.BarStyle != BarStyleFill {
+			u.BarStyle = du.BarStyle
+		}
+		if u.TimeStyle != TimeStyleAbsolute && u.TimeStyle != TimeStyleRelative {
+			u.TimeStyle = du.TimeStyle
+		}
+		if u.CacheTTL <= 0 {
+			u.CacheTTL = du.CacheTTL
+		}
+		cl.Fields.Usage.Set(u)
 	}
-	if usage.TimeStyle != TimeStyleAbsolute && usage.TimeStyle != TimeStyleRelative {
-		usage.TimeStyle = d.Modules.Claude.Fields.Usage.TimeStyle
-	}
-	if usage.CacheTTL <= 0 {
-		usage.CacheTTL = d.Modules.Claude.Fields.Usage.CacheTTL
+	if cl.Fields.Config.Present() {
+		cv := cl.Fields.Config.Get()
+		if cv.Mode != ClaudeModeAlways && cv.Mode != ClaudeModeAuto {
+			cv.Mode = d.Modules.Claude.Fields.Config.Get().Mode
+		}
+		cl.Fields.Config.Set(cv)
 	}
 
+	// Codex
 	cx := &c.Modules.Codex
 	if cx.Mode != CodexModeAlways && cx.Mode != CodexModeAuto {
 		cx.Mode = d.Modules.Codex.Mode
 	}
+	if cx.Fields.Config.Present() {
+		cxc := cx.Fields.Config.Get()
+		if cxc.Mode != CodexModeAlways && cxc.Mode != CodexModeAuto {
+			cxc.Mode = d.Modules.Codex.Fields.Config.Get().Mode
+		}
+		cx.Fields.Config.Set(cxc)
+	}
+}
+
+// ensureFieldsPresent marks fields as present when the YAML key existed
+// but had a null/empty value (where UnmarshalYAML is not called by goccy/go-yaml).
+func ensureFieldsPresent(keys []string, fields interface{}) {
+	keySet := make(map[string]bool, len(keys))
+	for _, k := range keys {
+		keySet[k] = true
+	}
+
+	switch f := fields.(type) {
+	case *GitFields:
+		if keySet["url"] && !f.Url.Present() {
+			f.Url.MarkPresent()
+		}
+		if keySet["cwd"] && !f.Cwd.Present() {
+			f.Cwd.MarkPresent()
+		}
+		if keySet["summary"] && !f.Summary.Present() {
+			f.Summary.MarkPresent()
+		}
+		if keySet["status"] && !f.Status.Present() {
+			f.Status.MarkPresent()
+		}
+	case *KubeFields:
+		if keySet["context"] && !f.Context.Present() {
+			f.Context.MarkPresent()
+		}
+	case *ClaudeFields:
+		if keySet["usage"] && !f.Usage.Present() {
+			f.Usage.MarkPresent()
+		}
+		if keySet["config"] && !f.Config.Present() {
+			f.Config.MarkPresent()
+		}
+	case *CodexFields:
+		if keySet["config"] && !f.Config.Present() {
+			f.Config.MarkPresent()
+		}
+	}
+}
+
+// warnFieldsConfig emits warnings to stderr for deprecated or empty fields config.
+func warnFieldsConfig(data []byte, fieldsPresent map[string]bool, subKeyOrder map[string][]string) {
+	// Warn about empty fields
+	for mod, present := range fieldsPresent {
+		if present {
+			if keys, ok := subKeyOrder[mod]; !ok || len(keys) == 0 {
+				fmt.Fprintf(os.Stderr, "warning: module %q has empty fields\n", mod)
+			}
+		}
+	}
+
+	// Warn about deprecated "enabled" key inside field configs
+	var raw yaml.MapSlice
+	if err := yaml.UnmarshalWithOptions(data, &raw, yaml.UseOrderedMap()); err != nil {
+		return
+	}
+	for _, item := range raw {
+		if key, ok := item.Key.(string); ok && key == "modules" {
+			if modules, ok := item.Value.(yaml.MapSlice); ok {
+				for _, m := range modules {
+					modName, ok := m.Key.(string)
+					if !ok {
+						continue
+					}
+					modValue, ok := m.Value.(yaml.MapSlice)
+					if !ok {
+						continue
+					}
+					for _, field := range modValue {
+						fieldName, ok := field.Key.(string)
+						if !ok || fieldName != "fields" {
+							continue
+						}
+						fieldsValue, ok := field.Value.(yaml.MapSlice)
+						if !ok {
+							continue
+						}
+						for _, f := range fieldsValue {
+							fName, ok := f.Key.(string)
+							if !ok {
+								continue
+							}
+							if fValue, ok := f.Value.(yaml.MapSlice); ok {
+								for _, kv := range fValue {
+									if kvKey, ok := kv.Key.(string); ok && kvKey == "enabled" {
+										fmt.Fprintf(os.Stderr, "warning: %q field in module %q uses deprecated 'enabled' key (ignored, presence of key controls visibility now)\n", fName, modName)
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 // extractOrder parses the YAML with goccy/go-yaml MapSlice
-// to extract both module order and sub-key order per module.
-func extractOrder(data []byte) ([]string, map[string][]string) {
+// to extract module order, sub-key order per module, and which modules
+// have an explicit "fields" key in the YAML.
+func extractOrder(data []byte) ([]string, map[string][]string, map[string]bool) {
 	var raw yaml.MapSlice
 	if err := yaml.UnmarshalWithOptions(data, &raw, yaml.UseOrderedMap()); err != nil {
-		return DefaultModuleOrder, nil
+		return DefaultModuleOrder, nil, nil
 	}
 
 	// Find "modules" key
@@ -464,6 +621,7 @@ func extractOrder(data []byte) ([]string, map[string][]string) {
 			if modules, ok := item.Value.(yaml.MapSlice); ok {
 				var moduleOrder []string
 				subKeyOrder := make(map[string][]string)
+				fieldsPresent := make(map[string]bool)
 
 				for _, m := range modules {
 					name, ok := m.Key.(string)
@@ -473,7 +631,7 @@ func extractOrder(data []byte) ([]string, map[string][]string) {
 					moduleOrder = append(moduleOrder, name)
 
 					// Extract sub-key order from this module's "fields" key,
-				// or fall back to top-level keys for single-key modules.
+					// or fall back to top-level keys for single-key modules.
 					if modValue, ok := m.Value.(yaml.MapSlice); ok {
 						var subKeys []string
 						foundFields := false
@@ -483,6 +641,7 @@ func extractOrder(data []byte) ([]string, map[string][]string) {
 								continue
 							}
 							if fieldName == "fields" {
+								fieldsPresent[name] = true
 								if fieldsValue, ok := field.Value.(yaml.MapSlice); ok {
 									for _, f := range fieldsValue {
 										if fk, ok := f.Key.(string); ok {
@@ -518,13 +677,13 @@ func extractOrder(data []byte) ([]string, map[string][]string) {
 							moduleOrder = append(moduleOrder, name)
 						}
 					}
-					return moduleOrder, subKeyOrder
+					return moduleOrder, subKeyOrder, fieldsPresent
 				}
 			}
 		}
 	}
 
-	return DefaultModuleOrder, nil
+	return DefaultModuleOrder, nil, nil
 }
 
 func GenerateDefault() string {
@@ -551,11 +710,9 @@ modules:
   git:
     enabled: true
     indicator: true         # show "not a git repo" outside repos
-    fields:
+    fields:                 # list fields to display (order matters, omit to hide)
       url:
-        enabled: true
       cwd:
-        enabled: true
         style: "tree"       # breadcrumb | tree
       summary:
         symbols:
@@ -566,7 +723,6 @@ modules:
           ahead: "↑"
           behind: "↓"
       status:
-        enabled: true
         style: "short"      # short | long
 
   kube:
@@ -583,21 +739,19 @@ modules:
   claude:
     enabled: true
     mode: "auto"            # always | auto
-    fields:
+    fields:                 # list fields to display (order matters, omit to hide)
       usage:
         bar_style: "block"  # block (▰▱) | dot (●○) | fill (█░)
         time_style: "absolute" # absolute (3:00pm) | relative (22m left)
         cache_ttl: 120      # cache duration in seconds
       config:
-        enabled: true
         mode: "auto"        # always (show ✓/✗) | auto (show existing only)
 
   codex:
     enabled: true
     mode: "auto"            # always | auto
-    fields:
+    fields:                 # list fields to display (order matters, omit to hide)
       config:
-        enabled: true
         mode: "auto"        # always (show ✓/✗) | auto (show existing only)
 `
 }

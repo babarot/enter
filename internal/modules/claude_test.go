@@ -279,7 +279,7 @@ func TestClaudeModuleAlwaysMode(t *testing.T) {
 	cfg := config.Default()
 	cfg.Modules.Claude.Mode = "always"
 	// Disable config view to simplify
-	cfg.Modules.Claude.Fields.Config.Enabled = false
+	cfg.Modules.Claude.Fields.Config = config.Field[config.ClaudeConfigView]{}
 	ctx := &module.Context{Cwd: t.TempDir(), Config: cfg}
 
 	// In always mode, Run should not return nil just because of missing .claude

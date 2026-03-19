@@ -30,6 +30,12 @@ func (m *KubeModule) Run(ctx *module.Context) *module.Output {
 		return nil
 	}
 
+	kubeCfg := ctx.Config.Modules.Kube
+
+	if !kubeCfg.Fields.Context.Present() {
+		return nil
+	}
+
 	// Default namespace
 	if info.namespace == "" {
 		info.namespace = "default"
@@ -37,7 +43,7 @@ func (m *KubeModule) Run(ctx *module.Context) *module.Output {
 
 	// Clean context name
 	displayContext := info.context
-	if ctx.Config.Modules.Kube.Fields.Context.Clean {
+	if kubeCfg.Fields.Context.Get().Clean {
 		displayContext = cleanContext(info.context)
 	}
 

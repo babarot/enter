@@ -70,7 +70,6 @@ modules:
     enabled: true
     fields:
       url:
-        enabled: true
       summary:
         symbols:
           unstaged: "!"
@@ -92,15 +91,24 @@ modules:
 	if cfg.Modules.Cwd.Style != "full" {
 		t.Errorf("cwd style: got %q, want %q", cfg.Modules.Cwd.Style, "full")
 	}
-	if !cfg.Modules.Git.Fields.Url.Enabled {
-		t.Error("git show_repo should be true")
+	if !cfg.Modules.Git.Fields.Url.Present() {
+		t.Error("git url field should be present")
 	}
-	if cfg.Modules.Git.Fields.Summary.Symbols.Unstaged != "!" {
-		t.Errorf("unstaged: got %q, want %q", cfg.Modules.Git.Fields.Summary.Symbols.Unstaged, "!")
+	if !cfg.Modules.Git.Fields.Summary.Present() {
+		t.Error("git summary field should be present")
+	}
+	if cfg.Modules.Git.Fields.Cwd.Present() {
+		t.Error("git cwd field should not be present (not in YAML)")
+	}
+	if cfg.Modules.Git.Fields.Status.Present() {
+		t.Error("git status field should not be present (not in YAML)")
+	}
+	if cfg.Modules.Git.Fields.Summary.Get().Symbols.Unstaged != "!" {
+		t.Errorf("unstaged: got %q, want %q", cfg.Modules.Git.Fields.Summary.Get().Symbols.Unstaged, "!")
 	}
 	// Empty symbols should be filled with defaults
-	if cfg.Modules.Git.Fields.Summary.Symbols.Staged != "+" {
-		t.Errorf("staged should default to +, got %q", cfg.Modules.Git.Fields.Summary.Symbols.Staged)
+	if cfg.Modules.Git.Fields.Summary.Get().Symbols.Staged != "+" {
+		t.Errorf("staged should default to +, got %q", cfg.Modules.Git.Fields.Summary.Get().Symbols.Staged)
 	}
 }
 
@@ -210,7 +218,7 @@ func TestModuleOrderMissing(t *testing.T) {
 }
 
 func TestExtractModuleOrderInvalidYAML(t *testing.T) {
-	order, _ := extractOrder([]byte("{{invalid"))
+	order, _, _ := extractOrder([]byte("{{invalid"))
 	for i, name := range DefaultModuleOrder {
 		if order[i] != name {
 			t.Errorf("invalid yaml order[%d]: got %q, want %q", i, order[i], name)
@@ -225,12 +233,10 @@ func TestValidate(t *testing.T) {
 	cfg.Format = "invalid"
 	cfg.Trigger = "invalid"
 	cfg.KeyStyle = "invalid"
-	cfg.Modules.Git.Fields.Cwd.Style = "invalid"
-	cfg.Modules.Git.Fields.Status.Style = "invalid"
+	cfg.Modules.Git.Fields.Cwd.Set(GitCwdConfig{Style: "invalid"})
+	cfg.Modules.Git.Fields.Status.Set(GitStatusConfig{Style: "invalid"})
 	cfg.Modules.Claude.Mode = "invalid"
-	cfg.Modules.Claude.Fields.Usage.BarStyle = "invalid"
-	cfg.Modules.Claude.Fields.Usage.TimeStyle = "invalid"
-	cfg.Modules.Claude.Fields.Usage.CacheTTL = -1
+	cfg.Modules.Claude.Fields.Usage.Set(ClaudeUsageConfig{BarStyle: "invalid", TimeStyle: "invalid", CacheTTL: -1})
 
 	cfg.validate()
 
@@ -244,23 +250,23 @@ func TestValidate(t *testing.T) {
 	if cfg.KeyStyle != d.KeyStyle {
 		t.Errorf("key_style: got %q, want %q", cfg.KeyStyle, d.KeyStyle)
 	}
-	if cfg.Modules.Git.Fields.Cwd.Style != d.Modules.Git.Fields.Cwd.Style {
-		t.Errorf("git.cwd.style: got %q, want %q", cfg.Modules.Git.Fields.Cwd.Style, d.Modules.Git.Fields.Cwd.Style)
+	if cfg.Modules.Git.Fields.Cwd.Get().Style != d.Modules.Git.Fields.Cwd.Get().Style {
+		t.Errorf("git.cwd.style: got %q, want %q", cfg.Modules.Git.Fields.Cwd.Get().Style, d.Modules.Git.Fields.Cwd.Get().Style)
 	}
-	if cfg.Modules.Git.Fields.Status.Style != d.Modules.Git.Fields.Status.Style {
-		t.Errorf("git.status.style: got %q, want %q", cfg.Modules.Git.Fields.Status.Style, d.Modules.Git.Fields.Status.Style)
+	if cfg.Modules.Git.Fields.Status.Get().Style != d.Modules.Git.Fields.Status.Get().Style {
+		t.Errorf("git.status.style: got %q, want %q", cfg.Modules.Git.Fields.Status.Get().Style, d.Modules.Git.Fields.Status.Get().Style)
 	}
 	if cfg.Modules.Claude.Mode != d.Modules.Claude.Mode {
 		t.Errorf("claude.mode: got %q, want %q", cfg.Modules.Claude.Mode, d.Modules.Claude.Mode)
 	}
-	if cfg.Modules.Claude.Fields.Usage.BarStyle != d.Modules.Claude.Fields.Usage.BarStyle {
-		t.Errorf("claude.usage.bar_style: got %q, want %q", cfg.Modules.Claude.Fields.Usage.BarStyle, d.Modules.Claude.Fields.Usage.BarStyle)
+	if cfg.Modules.Claude.Fields.Usage.Get().BarStyle != d.Modules.Claude.Fields.Usage.Get().BarStyle {
+		t.Errorf("claude.usage.bar_style: got %q, want %q", cfg.Modules.Claude.Fields.Usage.Get().BarStyle, d.Modules.Claude.Fields.Usage.Get().BarStyle)
 	}
-	if cfg.Modules.Claude.Fields.Usage.TimeStyle != d.Modules.Claude.Fields.Usage.TimeStyle {
-		t.Errorf("claude.usage.time_style: got %q, want %q", cfg.Modules.Claude.Fields.Usage.TimeStyle, d.Modules.Claude.Fields.Usage.TimeStyle)
+	if cfg.Modules.Claude.Fields.Usage.Get().TimeStyle != d.Modules.Claude.Fields.Usage.Get().TimeStyle {
+		t.Errorf("claude.usage.time_style: got %q, want %q", cfg.Modules.Claude.Fields.Usage.Get().TimeStyle, d.Modules.Claude.Fields.Usage.Get().TimeStyle)
 	}
-	if cfg.Modules.Claude.Fields.Usage.CacheTTL != d.Modules.Claude.Fields.Usage.CacheTTL {
-		t.Errorf("claude.usage.cache_ttl: got %d, want %d", cfg.Modules.Claude.Fields.Usage.CacheTTL, d.Modules.Claude.Fields.Usage.CacheTTL)
+	if cfg.Modules.Claude.Fields.Usage.Get().CacheTTL != d.Modules.Claude.Fields.Usage.Get().CacheTTL {
+		t.Errorf("claude.usage.cache_ttl: got %d, want %d", cfg.Modules.Claude.Fields.Usage.Get().CacheTTL, d.Modules.Claude.Fields.Usage.Get().CacheTTL)
 	}
 }
 
@@ -269,12 +275,10 @@ func TestValidateValidValues(t *testing.T) {
 	cfg.Format = "inline"
 	cfg.Trigger = "on_cd"
 	cfg.KeyStyle = "flat"
-	cfg.Modules.Git.Fields.Cwd.Style = "breadcrumb"
-	cfg.Modules.Git.Fields.Status.Style = "long"
+	cfg.Modules.Git.Fields.Cwd.Set(GitCwdConfig{Style: "breadcrumb"})
+	cfg.Modules.Git.Fields.Status.Set(GitStatusConfig{Style: "long"})
 	cfg.Modules.Claude.Mode = "always"
-	cfg.Modules.Claude.Fields.Usage.BarStyle = "dot"
-	cfg.Modules.Claude.Fields.Usage.TimeStyle = "relative"
-	cfg.Modules.Claude.Fields.Usage.CacheTTL = 60
+	cfg.Modules.Claude.Fields.Usage.Set(ClaudeUsageConfig{BarStyle: "dot", TimeStyle: "relative", CacheTTL: 60})
 
 	cfg.validate()
 
@@ -282,8 +286,8 @@ func TestValidateValidValues(t *testing.T) {
 	if cfg.Format != "inline" {
 		t.Errorf("format should stay inline, got %q", cfg.Format)
 	}
-	if cfg.Modules.Claude.Fields.Usage.BarStyle != "dot" {
-		t.Errorf("bar_style should stay dot, got %q", cfg.Modules.Claude.Fields.Usage.BarStyle)
+	if cfg.Modules.Claude.Fields.Usage.Get().BarStyle != "dot" {
+		t.Errorf("bar_style should stay dot, got %q", cfg.Modules.Claude.Fields.Usage.Get().BarStyle)
 	}
 }
 
@@ -299,7 +303,7 @@ modules:
       url:
         enabled: true
 `
-	_, subKeyOrder := extractOrder([]byte(content))
+	_, subKeyOrder, _ := extractOrder([]byte(content))
 	if subKeyOrder == nil {
 		t.Fatal("subKeyOrder should not be nil")
 	}
@@ -316,6 +320,165 @@ modules:
 		if gitOrder[i] != name {
 			t.Errorf("git sub-key order[%d]: got %q, want %q", i, gitOrder[i], name)
 		}
+	}
+}
+
+func TestDefaultFieldsAllPresent(t *testing.T) {
+	cfg := Default()
+	if !cfg.Modules.Git.Fields.Url.Present() {
+		t.Error("default git.url should be present")
+	}
+	if !cfg.Modules.Git.Fields.Cwd.Present() {
+		t.Error("default git.cwd should be present")
+	}
+	if !cfg.Modules.Git.Fields.Summary.Present() {
+		t.Error("default git.summary should be present")
+	}
+	if !cfg.Modules.Git.Fields.Status.Present() {
+		t.Error("default git.status should be present")
+	}
+	if !cfg.Modules.Kube.Fields.Context.Present() {
+		t.Error("default kube.context should be present")
+	}
+	if !cfg.Modules.Claude.Fields.Usage.Present() {
+		t.Error("default claude.usage should be present")
+	}
+	if !cfg.Modules.Claude.Fields.Config.Present() {
+		t.Error("default claude.config should be present")
+	}
+	if !cfg.Modules.Codex.Fields.Config.Present() {
+		t.Error("default codex.config should be present")
+	}
+}
+
+func TestLoadWithoutFieldsRestoresDefaults(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	// No "fields:" key at all — should get all defaults
+	content := `
+modules:
+  git:
+    enabled: true
+`
+	os.WriteFile(path, []byte(content), 0o644)
+
+	cfg := Load(path)
+	if !cfg.Modules.Git.Fields.Url.Present() {
+		t.Error("git.url should be present when fields: not specified")
+	}
+	if !cfg.Modules.Git.Fields.Summary.Present() {
+		t.Error("git.summary should be present when fields: not specified")
+	}
+	if !cfg.Modules.Git.Fields.Cwd.Present() {
+		t.Error("git.cwd should be present when fields: not specified")
+	}
+	if !cfg.Modules.Git.Fields.Status.Present() {
+		t.Error("git.status should be present when fields: not specified")
+	}
+}
+
+func TestLoadWithEmptyKeyField(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	// "url:" is an empty key — should still be Present via ensureFieldsPresent
+	content := `
+modules:
+  git:
+    enabled: true
+    fields:
+      url:
+      summary:
+        symbols:
+          unstaged: "!"
+`
+	os.WriteFile(path, []byte(content), 0o644)
+
+	cfg := Load(path)
+	if !cfg.Modules.Git.Fields.Url.Present() {
+		t.Error("empty-key url should be present")
+	}
+	if !cfg.Modules.Git.Fields.Summary.Present() {
+		t.Error("summary should be present")
+	}
+	if cfg.Modules.Git.Fields.Cwd.Present() {
+		t.Error("cwd should not be present (omitted)")
+	}
+	if cfg.Modules.Git.Fields.Status.Present() {
+		t.Error("status should not be present (omitted)")
+	}
+}
+
+func TestLoadWithEmptyFieldsBlock(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	// "fields:" is present but empty — all fields should be not present
+	content := `
+modules:
+  git:
+    enabled: true
+    fields:
+`
+	os.WriteFile(path, []byte(content), 0o644)
+
+	cfg := Load(path)
+	if cfg.Modules.Git.Fields.Url.Present() {
+		t.Error("url should not be present with empty fields block")
+	}
+	if cfg.Modules.Git.Fields.Cwd.Present() {
+		t.Error("cwd should not be present with empty fields block")
+	}
+	if cfg.Modules.Git.Fields.Summary.Present() {
+		t.Error("summary should not be present with empty fields block")
+	}
+	if cfg.Modules.Git.Fields.Status.Present() {
+		t.Error("status should not be present with empty fields block")
+	}
+}
+
+func TestExtractOrderFieldsPresent(t *testing.T) {
+	content := `
+modules:
+  git:
+    fields:
+      url:
+      summary:
+  kube:
+    enabled: true
+`
+	_, _, fieldsPresent := extractOrder([]byte(content))
+	if !fieldsPresent["git"] {
+		t.Error("git should have fieldsPresent=true")
+	}
+	if fieldsPresent["kube"] {
+		t.Error("kube should have fieldsPresent=false (no fields: key)")
+	}
+}
+
+func TestValidateSkipsNotPresentFields(t *testing.T) {
+	cfg := Default()
+	// Make cwd not present, then validate should not touch it
+	cfg.Modules.Git.Fields.Cwd = Field[GitCwdConfig]{}
+	cfg.validate()
+	if cfg.Modules.Git.Fields.Cwd.Present() {
+		t.Error("validate should not make absent fields present")
+	}
+}
+
+func TestEnsureFieldsPresent(t *testing.T) {
+	var fields GitFields
+	// Simulate: extractOrder found "url" and "status" in YAML, but they were empty keys
+	ensureFieldsPresent([]string{"url", "status"}, &fields)
+	if !fields.Url.Present() {
+		t.Error("url should be marked present")
+	}
+	if !fields.Status.Present() {
+		t.Error("status should be marked present")
+	}
+	if fields.Cwd.Present() {
+		t.Error("cwd should remain not present")
+	}
+	if fields.Summary.Present() {
+		t.Error("summary should remain not present")
 	}
 }
 

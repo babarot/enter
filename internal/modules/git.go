@@ -55,74 +55,76 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 		return nil
 	}
 
-	symbols := &gitCfg.Fields.Summary.Symbols
-
-	// Build status segments: (branch *+$% ↑1↓2|REBASE)
-	branchColor := module.Success
-	if info.detached {
-		branchColor = module.Danger
-	}
-
+	// Build summary segments: (branch *+$% ↑1↓2|REBASE)
 	var statusSegs []module.Segment
-	statusSegs = append(statusSegs, module.NewSegment("(", branchColor))
-	statusSegs = append(statusSegs, module.NewSegment(info.branch, branchColor))
+	if gitCfg.Fields.Summary.Present() {
+		symbols := gitCfg.Fields.Summary.Get().Symbols
 
-	// State flags
-	var flags []module.Segment
-	if info.unstaged {
-		flags = append(flags, module.NewSegment(symbols.Unstaged, module.Danger))
-	}
-	if info.staged {
-		flags = append(flags, module.NewSegment(symbols.Staged, module.Success))
-	}
-	if info.stash {
-		flags = append(flags, module.NewSegment(symbols.Stash, module.Primary))
-	}
-	if info.untracked {
-		flags = append(flags, module.NewSegment(symbols.Untracked, module.Danger))
-	}
-	if len(flags) > 0 {
-		statusSegs = append(statusSegs, module.Plain(" "))
-		statusSegs = append(statusSegs, flags...)
-	}
-
-	// Ahead/behind
-	var upstream []module.Segment
-	if info.ahead > 0 {
-		upstream = append(upstream, module.NewSegment(
-			fmt.Sprintf("%s%d", symbols.Ahead, info.ahead), module.Success))
-	}
-	if info.behind > 0 {
-		upstream = append(upstream, module.NewSegment(
-			fmt.Sprintf("%s%d", symbols.Behind, info.behind), module.Danger))
-	}
-	if len(upstream) > 0 {
-		statusSegs = append(statusSegs, module.Plain(" "))
-		for i, seg := range upstream {
-			if i > 0 {
-				statusSegs = append(statusSegs, module.Plain(" "))
-			}
-			statusSegs = append(statusSegs, seg)
+		branchColor := module.Success
+		if info.detached {
+			branchColor = module.Danger
 		}
-	}
 
-	// Operation
-	if info.operation != "" {
-		statusSegs = append(statusSegs, module.NewSegment("|"+info.operation, module.Accent))
-	}
+		statusSegs = append(statusSegs, module.NewSegment("(", branchColor))
+		statusSegs = append(statusSegs, module.NewSegment(info.branch, branchColor))
 
-	statusSegs = append(statusSegs, module.NewSegment(")", branchColor))
+		// State flags
+		var flags []module.Segment
+		if info.unstaged {
+			flags = append(flags, module.NewSegment(symbols.Unstaged, module.Danger))
+		}
+		if info.staged {
+			flags = append(flags, module.NewSegment(symbols.Staged, module.Success))
+		}
+		if info.stash {
+			flags = append(flags, module.NewSegment(symbols.Stash, module.Primary))
+		}
+		if info.untracked {
+			flags = append(flags, module.NewSegment(symbols.Untracked, module.Danger))
+		}
+		if len(flags) > 0 {
+			statusSegs = append(statusSegs, module.Plain(" "))
+			statusSegs = append(statusSegs, flags...)
+		}
+
+		// Ahead/behind
+		var upstream []module.Segment
+		if info.ahead > 0 {
+			upstream = append(upstream, module.NewSegment(
+				fmt.Sprintf("%s%d", symbols.Ahead, info.ahead), module.Success))
+		}
+		if info.behind > 0 {
+			upstream = append(upstream, module.NewSegment(
+				fmt.Sprintf("%s%d", symbols.Behind, info.behind), module.Danger))
+		}
+		if len(upstream) > 0 {
+			statusSegs = append(statusSegs, module.Plain(" "))
+			for i, seg := range upstream {
+				if i > 0 {
+					statusSegs = append(statusSegs, module.Plain(" "))
+				}
+				statusSegs = append(statusSegs, seg)
+			}
+		}
+
+		// Operation
+		if info.operation != "" {
+			statusSegs = append(statusSegs, module.NewSegment("|"+info.operation, module.Accent))
+		}
+
+		statusSegs = append(statusSegs, module.NewSegment(")", branchColor))
+	}
 
 	// Build cwd segments (show current position in repo)
 	var cwdSegs []module.Segment
-	if gitCfg.Fields.Cwd.Enabled {
-		cwdText := formatTree(info.repoRoot, info.relPath, gitCfg.Fields.Cwd.Style)
+	if gitCfg.Fields.Cwd.Present() {
+		cwdText := formatTree(info.repoRoot, info.relPath, gitCfg.Fields.Cwd.Get().Style)
 		cwdSegs = append(cwdSegs, module.NewSegment(cwdText, module.Muted))
 	}
 
 	// Build inline segments (all in one line)
 	var segments []module.Segment
-	if gitCfg.Fields.Url.Enabled && info.repoURL != "" {
+	if gitCfg.Fields.Url.Present() && info.repoURL != "" {
 		segments = append(segments, module.NewSegment(info.repoURL, module.Primary))
 		segments = append(segments, module.Plain(" "))
 	}
@@ -134,24 +136,26 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 
 	// Build rows for table format
 	var rows []module.Row
-	if gitCfg.Fields.Url.Enabled && info.repoURL != "" {
+	if gitCfg.Fields.Url.Present() && info.repoURL != "" {
 		rows = append(rows, module.Row{
 			Key:      "git.url",
 			Segments: []module.Segment{module.NewSegment(info.repoURL, module.Primary)},
 		})
 	}
-	if gitCfg.Fields.Cwd.Enabled {
+	if gitCfg.Fields.Cwd.Present() {
 		rows = append(rows, module.Row{
 			Key:      "git.cwd",
 			Segments: cwdSegs,
 		})
 	}
-	rows = append(rows, module.Row{
-		Key:      "git.summary",
-		Segments: statusSegs,
-	})
-	if gitCfg.Fields.Status.Enabled {
-		statusSegs := getGitStatusSegments(ctx.Cwd, gitCfg.Fields.Status.Style)
+	if gitCfg.Fields.Summary.Present() {
+		rows = append(rows, module.Row{
+			Key:      "git.summary",
+			Segments: statusSegs,
+		})
+	}
+	if gitCfg.Fields.Status.Present() {
+		statusSegs := getGitStatusSegments(ctx.Cwd, gitCfg.Fields.Status.Get().Style)
 		if len(statusSegs) > 0 {
 			rows = append(rows, module.Row{
 				Key:      "git.status",
@@ -177,7 +181,7 @@ func getGitStatusSegments(cwd, style string) []module.Segment {
 }
 
 func getGitStatusShort(cwd string) []module.Segment {
-	output, ok := execGit(cwd, "status", "--short")
+	output, ok := execGitRaw(cwd, "status", "--short")
 	if !ok || output == "" {
 		return nil
 	}
@@ -208,7 +212,7 @@ func getGitStatusShort(cwd string) []module.Segment {
 
 			codeColor := statusCodeColor(x, y)
 			segments = append(segments, module.NewSegment(fmt.Sprintf("%-2s", code), codeColor))
-			segments = append(segments, module.NewSegment(" "+filename, module.Secondary))
+			segments = append(segments, module.NewSegment(" "+filename, codeColor))
 		} else {
 			segments = append(segments, module.NewSegment(line, module.Muted))
 		}
@@ -291,6 +295,18 @@ func statusCodeColor(x, y byte) module.SemanticColor {
 	default:
 		return module.Secondary
 	}
+}
+
+// execGitRaw runs git and trims only trailing whitespace, preserving leading
+// spaces that are significant in commands like "git status --short".
+func execGitRaw(cwd string, args ...string) (string, bool) {
+	allArgs := append([]string{"-C", cwd}, args...)
+	cmd := exec.Command("git", allArgs...)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", false
+	}
+	return strings.TrimRight(string(out), " \t\n\r"), true
 }
 
 func execGit(cwd string, args ...string) (string, bool) {

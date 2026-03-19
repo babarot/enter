@@ -129,11 +129,9 @@ modules:
   git:
     enabled: true
     indicator: true           # show "not a git repo" outside repos
-    fields:
-      url:
-        enabled: true         # repository HTTPS URL (parsed from remote)
+    fields:                   # list fields to display (order matters, omit to hide)
+      url:                    # repository HTTPS URL (parsed from remote)
       cwd:
-        enabled: true
         style: "tree"         # breadcrumb | tree
       summary:
         symbols:
@@ -144,7 +142,6 @@ modules:
           ahead: "↑"
           behind: "↓"
       status:
-        enabled: true
         style: "short"        # short | long
 
   kube:
@@ -161,21 +158,19 @@ modules:
   claude:
     enabled: true
     mode: "auto"              # always | auto
-    fields:
+    fields:                   # list fields to display (order matters, omit to hide)
       usage:
         bar_style: "block"    # block (▰▱) | dot (●○) | fill (█░)
         time_style: "absolute" # absolute (3:00pm) | relative (22m left)
         cache_ttl: 120        # cache duration in seconds
       config:
-        enabled: true
         mode: "auto"          # always (show ✓/✗) | auto (show existing only)
 
   codex:
     enabled: true
     mode: "auto"              # always | auto
-    fields:
+    fields:                   # list fields to display (order matters, omit to hide)
       config:
-        enabled: true
         mode: "auto"          # always (show ✓/✗) | auto (show existing only)
 ```
 
@@ -184,21 +179,21 @@ modules:
 | Key | Source | Description |
 |-----|--------|-------------|
 | `cwd` | cwd module | Current working directory |
-| `git.url` | `fields.url.enabled: true` | Repository HTTPS URL |
-| `git.cwd` | `fields.cwd.enabled: true` | Position in repo (breadcrumb or tree) |
-| `git.summary` | always (when in repo) | Branch, flags, ahead/behind, operation |
-| `git.status` | `fields.status.enabled: true` | git status output (short or long) |
-| `kube.context` | kube module | Kubernetes context (cleaned if `fields.context.clean: true`) |
-| `kube.namespace` | kube module | Kubernetes namespace (defaults to "default") |
-| `kube.cluster` | kube module | Kubernetes cluster name |
+| `git.url` | `fields: url:` | Repository HTTPS URL |
+| `git.cwd` | `fields: cwd:` | Position in repo (breadcrumb or tree) |
+| `git.summary` | `fields: summary:` | Branch, flags, ahead/behind, operation |
+| `git.status` | `fields: status:` | git status output (short or long) |
+| `kube.context` | `fields: context:` | Kubernetes context (cleaned if `clean: true`) |
+| `kube.namespace` | `fields: context:` | Kubernetes namespace (defaults to "default") |
+| `kube.cluster` | `fields: context:` | Kubernetes cluster name |
 | `gcp.project` | gcp module | GCP project name |
 | `gcp.account` | gcp module | GCP account email |
 | `gcp.region` | gcp module | Compute region |
 | `gcp.config` | gcp module | Active gcloud config (hidden if "default") |
-| `claude.usage.5h` | claude module | 5-hour rolling window utilization |
-| `claude.usage.7d` | claude module | 7-day rolling window utilization |
-| `claude.config` | `fields.config.enabled: true` | Project config status (CLAUDE.md, rules, skills, etc.) |
-| `codex.config` | `fields.config.enabled: true` | Project config status (AGENTS.md, config.toml, etc.) |
+| `claude.usage.5h` | `fields: usage:` | 5-hour rolling window utilization |
+| `claude.usage.7d` | `fields: usage:` | 7-day rolling window utilization |
+| `claude.config` | `fields: config:` | Project config status (CLAUDE.md, rules, skills, etc.) |
+| `codex.config` | `fields: config:` | Project config status (AGENTS.md, config.toml, etc.) |
 
 ### Themes
 
@@ -229,7 +224,17 @@ modules:
 
 Modules not listed in the config file are appended in default order (`cwd`, `git`, `kube`, `gcp`, `claude`, `codex`).
 
-Sub-keys within a module are also ordered by their position in the `fields` section. Simply reorder the sections:
+### Field Visibility
+
+Each module's `fields:` section controls **which fields are displayed** and **in what order**. Visibility is determined by presence — there is no `enabled` flag on individual fields.
+
+| Situation | Behavior |
+|-----------|----------|
+| `fields:` not specified | All fields shown in default order |
+| `fields:` with listed keys | Only listed fields shown, in listed order |
+| Empty key (e.g. `url:`) | Field is shown with default settings |
+| Field omitted from `fields:` | Field is hidden |
+| `fields:` with no keys | Warning emitted, no fields shown |
 
 ```yaml
 modules:
@@ -237,13 +242,12 @@ modules:
     enabled: true
     fields:
       status:      # ← shown first
-        enabled: true
+        style: "short"
       summary:     # ← shown second
         symbols: ...
       cwd:         # ← shown third
-        enabled: true
-      url:         # ← shown fourth
-        enabled: true
+        style: "tree"
+      # url is omitted → hidden
 ```
 
 No separate `order` field is needed. Both module order and sub-key order are driven entirely by YAML key order.
