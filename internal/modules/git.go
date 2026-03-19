@@ -55,7 +55,7 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 		return nil
 	}
 
-	symbols := &gitCfg.Summary.Symbols
+	symbols := &gitCfg.Fields.Summary.Symbols
 
 	// Build status segments: (branch *+$% ↑1↓2|REBASE)
 	branchColor := module.Success
@@ -115,14 +115,14 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 
 	// Build cwd segments (show current position in repo)
 	var cwdSegs []module.Segment
-	if gitCfg.Cwd.Enabled {
-		cwdText := formatTree(info.repoRoot, info.relPath, gitCfg.Cwd.Style)
+	if gitCfg.Fields.Cwd.Enabled {
+		cwdText := formatTree(info.repoRoot, info.relPath, gitCfg.Fields.Cwd.Style)
 		cwdSegs = append(cwdSegs, module.NewSegment(cwdText, module.Muted))
 	}
 
 	// Build inline segments (all in one line)
 	var segments []module.Segment
-	if gitCfg.Url.Enabled && info.repoURL != "" {
+	if gitCfg.Fields.Url.Enabled && info.repoURL != "" {
 		segments = append(segments, module.NewSegment(info.repoURL, module.Primary))
 		segments = append(segments, module.Plain(" "))
 	}
@@ -134,13 +134,13 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 
 	// Build rows for table format
 	var rows []module.Row
-	if gitCfg.Url.Enabled && info.repoURL != "" {
+	if gitCfg.Fields.Url.Enabled && info.repoURL != "" {
 		rows = append(rows, module.Row{
 			Key:      "git.url",
 			Segments: []module.Segment{module.NewSegment(info.repoURL, module.Primary)},
 		})
 	}
-	if gitCfg.Cwd.Enabled {
+	if gitCfg.Fields.Cwd.Enabled {
 		rows = append(rows, module.Row{
 			Key:      "git.cwd",
 			Segments: cwdSegs,
@@ -150,8 +150,8 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 		Key:      "git.summary",
 		Segments: statusSegs,
 	})
-	if gitCfg.Status.Enabled {
-		statusSegs := getGitStatusSegments(ctx.Cwd, gitCfg.Status.Style)
+	if gitCfg.Fields.Status.Enabled {
+		statusSegs := getGitStatusSegments(ctx.Cwd, gitCfg.Fields.Status.Style)
 		if len(statusSegs) > 0 {
 			rows = append(rows, module.Row{
 				Key:      "git.status",

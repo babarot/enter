@@ -68,11 +68,12 @@ modules:
     style: "full"
   git:
     enabled: true
-    url:
-      enabled: true
-    summary:
-      symbols:
-        unstaged: "!"
+    fields:
+      url:
+        enabled: true
+      summary:
+        symbols:
+          unstaged: "!"
 `
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -91,15 +92,15 @@ modules:
 	if cfg.Modules.Cwd.Style != "full" {
 		t.Errorf("cwd style: got %q, want %q", cfg.Modules.Cwd.Style, "full")
 	}
-	if !cfg.Modules.Git.Url.Enabled {
+	if !cfg.Modules.Git.Fields.Url.Enabled {
 		t.Error("git show_repo should be true")
 	}
-	if cfg.Modules.Git.Summary.Symbols.Unstaged != "!" {
-		t.Errorf("unstaged: got %q, want %q", cfg.Modules.Git.Summary.Symbols.Unstaged, "!")
+	if cfg.Modules.Git.Fields.Summary.Symbols.Unstaged != "!" {
+		t.Errorf("unstaged: got %q, want %q", cfg.Modules.Git.Fields.Summary.Symbols.Unstaged, "!")
 	}
 	// Empty symbols should be filled with defaults
-	if cfg.Modules.Git.Summary.Symbols.Staged != "+" {
-		t.Errorf("staged should default to +, got %q", cfg.Modules.Git.Summary.Symbols.Staged)
+	if cfg.Modules.Git.Fields.Summary.Symbols.Staged != "+" {
+		t.Errorf("staged should default to +, got %q", cfg.Modules.Git.Fields.Summary.Symbols.Staged)
 	}
 }
 
@@ -224,12 +225,12 @@ func TestValidate(t *testing.T) {
 	cfg.Format = "invalid"
 	cfg.Trigger = "invalid"
 	cfg.KeyStyle = "invalid"
-	cfg.Modules.Git.Cwd.Style = "invalid"
-	cfg.Modules.Git.Status.Style = "invalid"
+	cfg.Modules.Git.Fields.Cwd.Style = "invalid"
+	cfg.Modules.Git.Fields.Status.Style = "invalid"
 	cfg.Modules.Claude.Mode = "invalid"
-	cfg.Modules.Claude.Usage.BarStyle = "invalid"
-	cfg.Modules.Claude.Usage.TimeStyle = "invalid"
-	cfg.Modules.Claude.Usage.CacheTTL = -1
+	cfg.Modules.Claude.Fields.Usage.BarStyle = "invalid"
+	cfg.Modules.Claude.Fields.Usage.TimeStyle = "invalid"
+	cfg.Modules.Claude.Fields.Usage.CacheTTL = -1
 
 	cfg.validate()
 
@@ -243,23 +244,23 @@ func TestValidate(t *testing.T) {
 	if cfg.KeyStyle != d.KeyStyle {
 		t.Errorf("key_style: got %q, want %q", cfg.KeyStyle, d.KeyStyle)
 	}
-	if cfg.Modules.Git.Cwd.Style != d.Modules.Git.Cwd.Style {
-		t.Errorf("git.cwd.style: got %q, want %q", cfg.Modules.Git.Cwd.Style, d.Modules.Git.Cwd.Style)
+	if cfg.Modules.Git.Fields.Cwd.Style != d.Modules.Git.Fields.Cwd.Style {
+		t.Errorf("git.cwd.style: got %q, want %q", cfg.Modules.Git.Fields.Cwd.Style, d.Modules.Git.Fields.Cwd.Style)
 	}
-	if cfg.Modules.Git.Status.Style != d.Modules.Git.Status.Style {
-		t.Errorf("git.status.style: got %q, want %q", cfg.Modules.Git.Status.Style, d.Modules.Git.Status.Style)
+	if cfg.Modules.Git.Fields.Status.Style != d.Modules.Git.Fields.Status.Style {
+		t.Errorf("git.status.style: got %q, want %q", cfg.Modules.Git.Fields.Status.Style, d.Modules.Git.Fields.Status.Style)
 	}
 	if cfg.Modules.Claude.Mode != d.Modules.Claude.Mode {
 		t.Errorf("claude.mode: got %q, want %q", cfg.Modules.Claude.Mode, d.Modules.Claude.Mode)
 	}
-	if cfg.Modules.Claude.Usage.BarStyle != d.Modules.Claude.Usage.BarStyle {
-		t.Errorf("claude.usage.bar_style: got %q, want %q", cfg.Modules.Claude.Usage.BarStyle, d.Modules.Claude.Usage.BarStyle)
+	if cfg.Modules.Claude.Fields.Usage.BarStyle != d.Modules.Claude.Fields.Usage.BarStyle {
+		t.Errorf("claude.usage.bar_style: got %q, want %q", cfg.Modules.Claude.Fields.Usage.BarStyle, d.Modules.Claude.Fields.Usage.BarStyle)
 	}
-	if cfg.Modules.Claude.Usage.TimeStyle != d.Modules.Claude.Usage.TimeStyle {
-		t.Errorf("claude.usage.time_style: got %q, want %q", cfg.Modules.Claude.Usage.TimeStyle, d.Modules.Claude.Usage.TimeStyle)
+	if cfg.Modules.Claude.Fields.Usage.TimeStyle != d.Modules.Claude.Fields.Usage.TimeStyle {
+		t.Errorf("claude.usage.time_style: got %q, want %q", cfg.Modules.Claude.Fields.Usage.TimeStyle, d.Modules.Claude.Fields.Usage.TimeStyle)
 	}
-	if cfg.Modules.Claude.Usage.CacheTTL != d.Modules.Claude.Usage.CacheTTL {
-		t.Errorf("claude.usage.cache_ttl: got %d, want %d", cfg.Modules.Claude.Usage.CacheTTL, d.Modules.Claude.Usage.CacheTTL)
+	if cfg.Modules.Claude.Fields.Usage.CacheTTL != d.Modules.Claude.Fields.Usage.CacheTTL {
+		t.Errorf("claude.usage.cache_ttl: got %d, want %d", cfg.Modules.Claude.Fields.Usage.CacheTTL, d.Modules.Claude.Fields.Usage.CacheTTL)
 	}
 }
 
@@ -268,12 +269,12 @@ func TestValidateValidValues(t *testing.T) {
 	cfg.Format = "inline"
 	cfg.Trigger = "on_cd"
 	cfg.KeyStyle = "flat"
-	cfg.Modules.Git.Cwd.Style = "breadcrumb"
-	cfg.Modules.Git.Status.Style = "long"
+	cfg.Modules.Git.Fields.Cwd.Style = "breadcrumb"
+	cfg.Modules.Git.Fields.Status.Style = "long"
 	cfg.Modules.Claude.Mode = "always"
-	cfg.Modules.Claude.Usage.BarStyle = "dot"
-	cfg.Modules.Claude.Usage.TimeStyle = "relative"
-	cfg.Modules.Claude.Usage.CacheTTL = 60
+	cfg.Modules.Claude.Fields.Usage.BarStyle = "dot"
+	cfg.Modules.Claude.Fields.Usage.TimeStyle = "relative"
+	cfg.Modules.Claude.Fields.Usage.CacheTTL = 60
 
 	cfg.validate()
 
@@ -281,8 +282,8 @@ func TestValidateValidValues(t *testing.T) {
 	if cfg.Format != "inline" {
 		t.Errorf("format should stay inline, got %q", cfg.Format)
 	}
-	if cfg.Modules.Claude.Usage.BarStyle != "dot" {
-		t.Errorf("bar_style should stay dot, got %q", cfg.Modules.Claude.Usage.BarStyle)
+	if cfg.Modules.Claude.Fields.Usage.BarStyle != "dot" {
+		t.Errorf("bar_style should stay dot, got %q", cfg.Modules.Claude.Fields.Usage.BarStyle)
 	}
 }
 
@@ -290,12 +291,13 @@ func TestExtractSubKeyOrder(t *testing.T) {
 	content := `
 modules:
   git:
-    status:
-      enabled: true
-    summary:
-      symbols: {}
-    url:
-      enabled: true
+    fields:
+      status:
+        enabled: true
+      summary:
+        symbols: {}
+      url:
+        enabled: true
 `
 	_, subKeyOrder := extractOrder([]byte(content))
 	if subKeyOrder == nil {

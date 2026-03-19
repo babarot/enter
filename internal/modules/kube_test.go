@@ -183,7 +183,7 @@ contexts:
 	m := &KubeModule{}
 	cfg := config.Default()
 	cfg.Modules.Kube.Enabled = true
-	cfg.Modules.Kube.Context.Clean = true
+	cfg.Modules.Kube.Fields.Context.Clean = true
 	ctx := &module.Context{Cwd: "/tmp", Config: cfg}
 
 	out := m.Run(ctx)
@@ -224,7 +224,7 @@ contexts:
 	m := &KubeModule{}
 	cfg := config.Default()
 	cfg.Modules.Kube.Enabled = true
-	cfg.Modules.Kube.Context.Clean = false
+	cfg.Modules.Kube.Fields.Context.Clean = false
 	ctx := &module.Context{Cwd: "/tmp", Config: cfg}
 
 	out := m.Run(ctx)
