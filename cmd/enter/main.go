@@ -95,10 +95,13 @@ func main() {
 		config.ModuleCodex:  &modules.CodexModule{},
 	}
 
-	// Order modules based on config
+	// Order modules based on config, filtering by "when" conditions
 	var allModules []module.Module
 	for _, name := range cfg.ModuleOrder {
 		if m, ok := moduleMap[name]; ok {
+			if w := cfg.Modules.WhenFor(name); !w.Match(cwd) {
+				continue
+			}
 			allModules = append(allModules, m)
 		}
 	}

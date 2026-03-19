@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/goccy/go-yaml"
 )
 
 func TestDefault(t *testing.T) {
@@ -312,6 +314,144 @@ modules:
 		if gitOrder[i] != name {
 			t.Errorf("git sub-key order[%d]: got %q, want %q", i, gitOrder[i], name)
 		}
+	}
+}
+
+func TestStringOrSliceSingle(t *testing.T) {
+	content := `dir: "foo"`
+	var w When
+	if err := yaml.Unmarshal([]byte(content), &w); err != nil {
+		t.Fatal(err)
+	}
+	if len(w.Dir) != 1 || w.Dir[0] != "foo" {
+		t.Errorf("got %v, want [foo]", w.Dir)
+	}
+}
+
+func TestStringOrSliceMulti(t *testing.T) {
+	content := `dir:
+  - "foo"
+  - "bar"
+`
+	var w When
+	if err := yaml.Unmarshal([]byte(content), &w); err != nil {
+		t.Fatal(err)
+	}
+	if len(w.Dir) != 2 || w.Dir[0] != "foo" || w.Dir[1] != "bar" {
+		t.Errorf("got %v, want [foo bar]", w.Dir)
+	}
+}
+
+func TestWhenMatchNil(t *testing.T) {
+	var w *When
+	if !w.Match("/any/path") {
+		t.Error("nil When should match everything")
+	}
+}
+
+func TestWhenMatchEmpty(t *testing.T) {
+	w := &When{}
+	if !w.Match("/any/path") {
+		t.Error("empty When should match everything")
+	}
+}
+
+func TestWhenMatchGlob(t *testing.T) {
+	w := &When{Dir: StringOrSlice{"/home/user/src/**"}}
+	if !w.Match("/home/user/src/github.com/foo") {
+		t.Error("should match nested path")
+	}
+	if w.Match("/home/user/documents/foo") {
+		t.Error("should not match unrelated path")
+	}
+}
+
+func TestWhenMatchMultiplePatterns(t *testing.T) {
+	w := &When{Dir: StringOrSlice{"/a/**", "/b/**"}}
+	if !w.Match("/b/foo") {
+		t.Error("should match second pattern")
+	}
+	if w.Match("/c/foo") {
+		t.Error("should not match any pattern")
+	}
+}
+
+func TestWhenMatchTildeExpansion(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("cannot determine home directory")
+	}
+	w := &When{Dir: StringOrSlice{"~/src/**"}}
+	if !w.Match(filepath.Join(home, "src", "github.com", "foo")) {
+		t.Error("should match path under ~/src")
+	}
+	if w.Match(filepath.Join(home, "documents", "foo")) {
+		t.Error("should not match path outside ~/src")
+	}
+}
+
+func TestWhenForAllModules(t *testing.T) {
+	cfg := Default()
+	conds := map[string]*When{
+		ModuleCwd:    {Dir: StringOrSlice{"/cwd/**"}},
+		ModuleGit:    {Dir: StringOrSlice{"/git/**"}},
+		ModuleKube:   {Dir: StringOrSlice{"/kube/**"}},
+		ModuleGcp:    {Dir: StringOrSlice{"/gcp/**"}},
+		ModuleClaude: {Dir: StringOrSlice{"/claude/**"}},
+		ModuleCodex:  {Dir: StringOrSlice{"/codex/**"}},
+	}
+	cfg.Modules.Cwd.When = conds[ModuleCwd]
+	cfg.Modules.Git.When = conds[ModuleGit]
+	cfg.Modules.Kube.When = conds[ModuleKube]
+	cfg.Modules.Gcp.When = conds[ModuleGcp]
+	cfg.Modules.Claude.When = conds[ModuleClaude]
+	cfg.Modules.Codex.When = conds[ModuleCodex]
+
+	for name, want := range conds {
+		if got := cfg.Modules.WhenFor(name); got != want {
+			t.Errorf("WhenFor(%s): got %v, want %v", name, got, want)
+		}
+	}
+	if got := cfg.Modules.WhenFor("unknown"); got != nil {
+		t.Error("WhenFor(unknown) should return nil")
+	}
+}
+
+func TestLoadConfigWithWhen(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	content := `
+modules:
+  gcp:
+    enabled: true
+    when:
+      dir: "**/mycompany/**"
+  kube:
+    enabled: true
+    when:
+      dir:
+        - "**/mycompany/**"
+        - "**/k8s-*/**"
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg := Load(path)
+
+	if cfg.Modules.Gcp.When == nil {
+		t.Fatal("gcp.when should not be nil")
+	}
+	if len(cfg.Modules.Gcp.When.Dir) != 1 {
+		t.Errorf("gcp.when.dir: got %d patterns, want 1", len(cfg.Modules.Gcp.When.Dir))
+	}
+	if cfg.Modules.Kube.When == nil {
+		t.Fatal("kube.when should not be nil")
+	}
+	if len(cfg.Modules.Kube.When.Dir) != 2 {
+		t.Errorf("kube.when.dir: got %d patterns, want 2", len(cfg.Modules.Kube.When.Dir))
+	}
+	if cfg.Modules.Cwd.When != nil {
+		t.Error("cwd.when should be nil when not set")
 	}
 }
 

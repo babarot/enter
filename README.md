@@ -153,6 +153,8 @@ modules:
 
   gcp:
     enabled: false
+    # when:                   # conditional display (see below)
+    #   dir: "~/src/github.com/mycompany/**"
 
   claude:
     enabled: true
@@ -239,6 +241,36 @@ modules:
 ```
 
 No separate `order` field is needed. Both module order and sub-key order are driven entirely by YAML key order.
+
+### Conditional Display
+
+Each module supports a `when` field that controls when the module is shown based on the current working directory. If `when` is not set, the module is always shown (when enabled).
+
+```yaml
+modules:
+  gcp:
+    enabled: true
+    when:
+      dir: "**/github.com/mycompany/**"
+
+  kube:
+    enabled: true
+    when:
+      dir:
+        - "**/github.com/mycompany/**"
+        - "**/k8s-*/**"
+```
+
+- `dir` accepts a single glob pattern or a list of patterns
+- Multiple patterns are OR'd — the module is shown if **any** pattern matches the current directory
+- Patterns use [doublestar](https://github.com/bmatcuk/doublestar) glob syntax (`**` matches any number of path segments)
+- `~/` is expanded to the home directory
+
+| Condition | Behavior |
+|-----------|----------|
+| `enabled: false` | Module is always hidden (condition is not evaluated) |
+| `enabled: true`, no `when` | Module is always shown |
+| `enabled: true`, `when.dir` set | Module is shown only when cwd matches |
 
 ### Git Symbols
 
