@@ -3,6 +3,7 @@ module github.com/babarot/enter
 go 1.26.1
 
 require (
+	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/goccy/go-yaml v1.19.2
 )

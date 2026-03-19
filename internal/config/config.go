@@ -3,7 +3,9 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/goccy/go-yaml"
 )
 
@@ -85,6 +87,47 @@ const (
 	ThemeDefault = "default"
 )
 
+// StringOrSlice accepts either a single string or a list of strings in YAML.
+type StringOrSlice []string
+
+// UnmarshalYAML implements goccy/go-yaml BytesUnmarshaler.
+func (s *StringOrSlice) UnmarshalYAML(data []byte) error {
+	var single string
+	if err := yaml.Unmarshal(data, &single); err == nil {
+		*s = StringOrSlice{single}
+		return nil
+	}
+	var multi []string
+	if err := yaml.Unmarshal(data, &multi); err != nil {
+		return err
+	}
+	*s = StringOrSlice(multi)
+	return nil
+}
+
+// When defines conditions for when a module should be displayed.
+type When struct {
+	Dir StringOrSlice `yaml:"dir"`
+}
+
+// Match returns true if cwd matches any of the dir patterns.
+// Returns true if When is nil or Dir is empty (no restriction).
+func (w *When) Match(cwd string) bool {
+	if w == nil || len(w.Dir) == 0 {
+		return true
+	}
+	home, _ := os.UserHomeDir()
+	for _, pattern := range w.Dir {
+		if strings.HasPrefix(pattern, "~/") {
+			pattern = filepath.Join(home, pattern[2:])
+		}
+		if matched, _ := doublestar.Match(pattern, cwd); matched {
+			return true
+		}
+	}
+	return false
+}
+
 type Config struct {
 	Theme        string        `yaml:"theme"`
 	Format       string        `yaml:"format"`
@@ -110,15 +153,17 @@ type ModulesConfig struct {
 type CwdConfig struct {
 	Enabled bool   `yaml:"enabled"`
 	Style   string `yaml:"style"`
+	When    *When  `yaml:"when"`
 }
 
 type GitConfig struct {
-	Enabled   bool           `yaml:"enabled"`
-	Indicator bool           `yaml:"indicator"`
-	Url       GitUrlConfig   `yaml:"url"`
-	Cwd       GitCwdConfig   `yaml:"cwd"`
+	Enabled   bool             `yaml:"enabled"`
+	Indicator bool             `yaml:"indicator"`
+	Url       GitUrlConfig     `yaml:"url"`
+	Cwd       GitCwdConfig     `yaml:"cwd"`
 	Summary   GitSummaryConfig `yaml:"summary"`
-	Status    GitStatusConfig `yaml:"status"`
+	Status    GitStatusConfig  `yaml:"status"`
+	When      *When            `yaml:"when"`
 }
 
 type GitUrlConfig struct {
@@ -151,6 +196,7 @@ type GitSymbols struct {
 type KubeConfig struct {
 	Enabled bool              `yaml:"enabled"`
 	Context KubeContextConfig `yaml:"context"`
+	When    *When             `yaml:"when"`
 }
 
 type KubeContextConfig struct {
@@ -158,14 +204,16 @@ type KubeContextConfig struct {
 }
 
 type GcpConfig struct {
-	Enabled bool `yaml:"enabled"`
+	Enabled bool  `yaml:"enabled"`
+	When    *When `yaml:"when"`
 }
 
 type ClaudeConfig struct {
-	Enabled bool               `yaml:"enabled"`
-	Mode    string             `yaml:"mode"`   // "always" | "auto"
-	Usage   ClaudeUsageConfig  `yaml:"usage"`
-	Config  ClaudeConfigView   `yaml:"config"`
+	Enabled bool              `yaml:"enabled"`
+	Mode    string            `yaml:"mode"` // "always" | "auto"
+	Usage   ClaudeUsageConfig `yaml:"usage"`
+	Config  ClaudeConfigView  `yaml:"config"`
+	When    *When             `yaml:"when"`
 }
 
 type ClaudeUsageConfig struct {
@@ -183,11 +231,32 @@ type CodexConfig struct {
 	Enabled bool            `yaml:"enabled"`
 	Mode    string          `yaml:"mode"` // "always" | "auto"
 	Config  CodexConfigView `yaml:"config"`
+	When    *When           `yaml:"when"`
 }
 
 type CodexConfigView struct {
 	Enabled bool   `yaml:"enabled"`
 	Mode    string `yaml:"mode"` // "always" | "auto"
+}
+
+// WhenFor returns the When condition for the named module, or nil if none is set.
+func (mc *ModulesConfig) WhenFor(name string) *When {
+	switch name {
+	case ModuleCwd:
+		return mc.Cwd.When
+	case ModuleGit:
+		return mc.Git.When
+	case ModuleKube:
+		return mc.Kube.When
+	case ModuleGcp:
+		return mc.Gcp.When
+	case ModuleClaude:
+		return mc.Claude.When
+	case ModuleCodex:
+		return mc.Codex.When
+	default:
+		return nil
+	}
 }
 
 var DefaultModuleOrder = []string{ModuleCwd, ModuleGit, ModuleKube, ModuleGcp, ModuleClaude, ModuleCodex}
@@ -418,6 +487,15 @@ trigger: "always"           # always | on_cd
 key_style: "tree"           # flat (git.summary) | tree (├── summary)
 
 modules:
+  # Each module supports "when" for conditional display:
+  #   when:
+  #     dir: "~/src/github.com/mycompany/**"   # single glob pattern
+  # Multiple patterns (OR):
+  #   when:
+  #     dir:
+  #       - "~/src/github.com/mycompany/**"
+  #       - "~/work/infra/**"
+
   cwd:
     enabled: true
     style: "short"        # parent | full | short | basename
@@ -449,6 +527,8 @@ modules:
 
   gcp:
     enabled: false
+    # when:
+    #   dir: "~/src/github.com/mycompany/**"
 
   claude:
     enabled: true
