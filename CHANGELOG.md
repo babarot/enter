@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.3.0](https://github.com/babarot/enter/compare/v0.2.0...v0.3.0) - 2026-03-19
+### New Features
+- Add per-module `when` condition for conditional display based on cwd by @babarot in https://github.com/babarot/enter/pull/10
+
 ## [v0.2.0](https://github.com/babarot/enter/compare/v0.1.0...v0.2.0) - 2026-03-18
 ### New Features
 - Add codex module for Codex CLI project detection by @babarot in https://github.com/babarot/enter/pull/7
