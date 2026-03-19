@@ -177,7 +177,7 @@ func getGitStatusSegments(cwd, style string) []module.Segment {
 }
 
 func getGitStatusShort(cwd string) []module.Segment {
-	output, ok := execGit(cwd, "status", "--short")
+	output, ok := execGitRaw(cwd, "status", "--short")
 	if !ok || output == "" {
 		return nil
 	}
@@ -208,7 +208,7 @@ func getGitStatusShort(cwd string) []module.Segment {
 
 			codeColor := statusCodeColor(x, y)
 			segments = append(segments, module.NewSegment(fmt.Sprintf("%-2s", code), codeColor))
-			segments = append(segments, module.NewSegment(" "+filename, module.Secondary))
+			segments = append(segments, module.NewSegment(" "+filename, codeColor))
 		} else {
 			segments = append(segments, module.NewSegment(line, module.Muted))
 		}
@@ -291,6 +291,18 @@ func statusCodeColor(x, y byte) module.SemanticColor {
 	default:
 		return module.Secondary
 	}
+}
+
+// execGitRaw runs git and trims only trailing whitespace, preserving leading
+// spaces that are significant in commands like "git status --short".
+func execGitRaw(cwd string, args ...string) (string, bool) {
+	allArgs := append([]string{"-C", cwd}, args...)
+	cmd := exec.Command("git", allArgs...)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", false
+	}
+	return strings.TrimRight(string(out), " \t\n\r"), true
 }
 
 func execGit(cwd string, args ...string) (string, bool) {
