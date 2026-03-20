@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.4.0](https://github.com/babarot/enter/compare/v0.3.0...v0.4.0) - 2026-03-19
+### New Features
+- Introduce `fields` config to separate display rows from module flags by @babarot in https://github.com/babarot/enter/pull/11
+- Replace field-level enabled with presence-based Field[T] generic type by @babarot in https://github.com/babarot/enter/pull/13
+
 ## [v0.3.0](https://github.com/babarot/enter/compare/v0.2.0...v0.3.0) - 2026-03-19
 ### New Features
 - Add per-module `when` condition for conditional display based on cwd by @babarot in https://github.com/babarot/enter/pull/10
