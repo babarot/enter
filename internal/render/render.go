@@ -162,6 +162,9 @@ func renderTable(outputs []*module.Output, cfg *config.Config, theme *ThemePalet
 		value := e.value
 		if strings.Contains(value, "\n") {
 			value = boxStyle.Render(truncateLines(value, maxBoxContentWidth))
+		} else if ansi.StringWidth(value) > maxBoxContentWidth+4 {
+			// Truncate single-line values that exceed available width
+			value = ansi.Truncate(value, maxBoxContentWidth+4, "…")
 		}
 
 		rows = append(rows, []string{label, value})
@@ -169,7 +172,6 @@ func renderTable(outputs []*module.Output, cfg *config.Config, theme *ThemePalet
 
 	t := table.New().
 		Rows(rows...).
-		Width(tw).
 		BorderStyle(lipgloss.NewStyle().Foreground(borderColor)).
 		StyleFunc(func(row, col int) lipgloss.Style {
 			return lipgloss.NewStyle().PaddingLeft(1).PaddingRight(1)
