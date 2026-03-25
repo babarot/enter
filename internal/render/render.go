@@ -1,14 +1,26 @@
 package render
 
 import (
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
+	"github.com/charmbracelet/x/ansi"
+	"github.com/charmbracelet/x/term"
 
 	"github.com/babarot/enter/internal/config"
 	"github.com/babarot/enter/internal/module"
 )
+
+// termWidth returns the current terminal width, or 80 as a fallback.
+func termWidth() int {
+	w, _, err := term.GetSize(os.Stdout.Fd())
+	if err != nil || w <= 0 {
+		return 80
+	}
+	return w
+}
 
 func Render(outputs []*module.Output, cfg *config.Config) string {
 	theme := GetTheme(cfg.Theme)
@@ -39,12 +51,6 @@ func renderInline(outputs []*module.Output, cfg *config.Config, theme *ThemePale
 // If a module has Rows, each row becomes a separate entry.
 // Otherwise, the module's Name + Segments become a single entry.
 func flattenRows(outputs []*module.Output, cfg *config.Config, theme *ThemePalette) []struct{ key, value string } {
-	borderColor := lipgloss.Color(toHex(theme.Muted))
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(borderColor).
-		Padding(0, 1)
-
 	var result []struct{ key, value string }
 	for _, out := range outputs {
 		if len(out.Rows) > 0 {
@@ -77,23 +83,29 @@ func flattenRows(outputs []*module.Output, cfg *config.Config, theme *ThemePalet
 			for _, row := range filtered {
 				value := renderSegments(row.Segments, theme)
 				if value != "" {
-					if strings.Contains(value, "\n") {
-						value = boxStyle.Render(value)
-					}
 					result = append(result, struct{ key, value string }{row.Key, value})
 				}
 			}
 		} else {
 			value := renderSegments(out.Segments, theme)
 			if value != "" {
-				if strings.Contains(value, "\n") {
-					value = boxStyle.Render(value)
-				}
 				result = append(result, struct{ key, value string }{out.Name, value})
 			}
 		}
 	}
 	return result
+}
+
+// truncateLines truncates each line in a multiline string to maxWidth,
+// preserving ANSI escape codes.
+func truncateLines(s string, maxWidth int) string {
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		if ansi.StringWidth(line) > maxWidth {
+			lines[i] = ansi.Truncate(line, maxWidth, "…")
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 func renderTable(outputs []*module.Output, cfg *config.Config, theme *ThemePalette) string {
@@ -106,6 +118,36 @@ func renderTable(outputs []*module.Output, cfg *config.Config, theme *ThemePalet
 		entries = treeifyKeys(entries)
 	}
 
+	// Compute actual max key column width (visual width of first line only,
+	// since treeifyKeys appends continuation lines to multiline-value keys).
+	maxKeyWidth := 0
+	for _, e := range entries {
+		key := e.key
+		if idx := strings.Index(key, "\n"); idx >= 0 {
+			key = key[:idx]
+		}
+		if w := ansi.StringWidth(key); w > maxKeyWidth {
+			maxKeyWidth = w
+		}
+	}
+
+	tw := termWidth()
+	borderColor := lipgloss.Color(toHex(theme.Muted))
+
+	// Calculate available width for box content inside the value column.
+	// Table layout: │ <pad> key <pad> │ <pad> value <pad> │
+	// Borders: 3 chars (│ │ │), Padding: 4 chars (1+1 per column)
+	// Box: 2 border chars + 2 padding chars = 4
+	maxBoxContentWidth := tw - 3 - 4 - maxKeyWidth - 4
+	if maxBoxContentWidth < 20 {
+		maxBoxContentWidth = 20
+	}
+
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(borderColor).
+		Padding(0, 1)
+
 	var rows [][]string
 	for _, e := range entries {
 		var label string
@@ -116,18 +158,20 @@ func renderTable(outputs []*module.Output, cfg *config.Config, theme *ThemePalet
 		} else {
 			label = Paint(e.key, module.Muted, theme)
 		}
-		rows = append(rows, []string{label, e.value})
-	}
 
-	borderColor := lipgloss.Color(toHex(theme.Muted))
+		value := e.value
+		if strings.Contains(value, "\n") {
+			value = boxStyle.Render(truncateLines(value, maxBoxContentWidth))
+		}
+
+		rows = append(rows, []string{label, value})
+	}
 
 	t := table.New().
 		Rows(rows...).
+		Width(tw).
 		BorderStyle(lipgloss.NewStyle().Foreground(borderColor)).
 		StyleFunc(func(row, col int) lipgloss.Style {
-			if col == 0 {
-				return lipgloss.NewStyle().PaddingLeft(1).PaddingRight(1)
-			}
 			return lipgloss.NewStyle().PaddingLeft(1).PaddingRight(1)
 		})
 
