@@ -66,7 +66,11 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 		}
 
 		statusSegs = append(statusSegs, module.NewSegment("(", branchColor))
-		statusSegs = append(statusSegs, module.NewSegment(info.branch, branchColor))
+		branchSeg := module.NewSegment(info.branch, branchColor)
+		if info.repoURL != "" && !info.detached {
+			branchSeg.Link = info.repoURL + "/tree/" + info.branch
+		}
+		statusSegs = append(statusSegs, branchSeg)
 
 		// State flags
 		var flags []module.Segment

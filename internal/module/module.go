@@ -19,6 +19,7 @@ type Segment struct {
 	Text      string
 	Color     SemanticColor
 	Underline bool
+	Link      string // OSC 8 hyperlink URL (optional)
 }
 
 func NewSegment(text string, color SemanticColor) Segment {

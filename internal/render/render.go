@@ -294,11 +294,16 @@ func treeifyKeys(entries []struct{ key, value string }) []struct{ key, value str
 func renderSegments(segments []module.Segment, theme *ThemePalette) string {
 	var buf strings.Builder
 	for _, seg := range segments {
+		var rendered string
 		if seg.Underline {
-			buf.WriteString(PaintUnderline(seg.Text, seg.Color, theme))
+			rendered = PaintUnderline(seg.Text, seg.Color, theme)
 		} else {
-			buf.WriteString(Paint(seg.Text, seg.Color, theme))
+			rendered = Paint(seg.Text, seg.Color, theme)
 		}
+		if seg.Link != "" {
+			rendered = "\x1b]8;;" + seg.Link + "\x1b\\" + rendered + "\x1b]8;;\x1b\\"
+		}
+		buf.WriteString(rendered)
 	}
 	return buf.String()
 }
