@@ -304,7 +304,7 @@ func statusCodeColor(x, y byte) module.SemanticColor {
 // execGitRaw runs git and trims only trailing whitespace, preserving leading
 // spaces that are significant in commands like "git status --short".
 func execGitRaw(cwd string, args ...string) (string, bool) {
-	allArgs := append([]string{"-C", cwd}, args...)
+	allArgs := append([]string{"--no-optional-locks", "-C", cwd}, args...)
 	cmd := exec.Command("git", allArgs...)
 	out, err := cmd.Output()
 	if err != nil {
@@ -314,7 +314,7 @@ func execGitRaw(cwd string, args ...string) (string, bool) {
 }
 
 func execGit(cwd string, args ...string) (string, bool) {
-	allArgs := append([]string{"-C", cwd}, args...)
+	allArgs := append([]string{"--no-optional-locks", "-C", cwd}, args...)
 	cmd := exec.Command("git", allArgs...)
 	out, err := cmd.Output()
 	if err != nil {
