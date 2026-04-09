@@ -167,6 +167,28 @@ func renderTable(outputs []*module.Output, cfg *config.Config, theme *ThemePalet
 			value = ansi.Truncate(value, maxBoxContentWidth+4, "…")
 		}
 
+		// After box rendering, the value may have more lines than the key's
+		// continuation lines (which were calculated before boxing). Add extra
+		// continuation lines so tree connectors don't break visually.
+		if cfg.KeyStyle == config.KeyStyleTree {
+			keyLineCount := strings.Count(label, "\n") + 1
+			valueLineCount := strings.Count(value, "\n") + 1
+			if valueLineCount > keyLineCount {
+				var cont string
+				if strings.HasPrefix(e.key, "└") {
+					cont = "    "
+				} else if strings.HasPrefix(e.key, "├") {
+					cont = "│   "
+				}
+				if cont != "" {
+					paintedCont := Paint(cont, module.Muted, theme)
+					for k := 0; k < valueLineCount-keyLineCount; k++ {
+						label += "\n" + paintedCont
+					}
+				}
+			}
+		}
+
 		rows = append(rows, []string{label, value})
 	}
 
