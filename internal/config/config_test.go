@@ -620,6 +620,87 @@ modules:
 	}
 }
 
+func boolPtr(b bool) *bool { return &b }
+
+func TestWhenGitRepoTrue(t *testing.T) {
+	// This test runs inside the enter repo, so git_repo: true should match.
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := &When{GitRepo: boolPtr(true)}
+	if !w.Match(cwd) {
+		t.Error("git_repo: true should match inside a git repo")
+	}
+}
+
+func TestWhenGitRepoFalse(t *testing.T) {
+	// A temp dir is not a git repo, so git_repo: false should match.
+	dir := t.TempDir()
+	w := &When{GitRepo: boolPtr(false)}
+	if !w.Match(dir) {
+		t.Error("git_repo: false should match outside a git repo")
+	}
+}
+
+func TestWhenGitRepoFalseInsideRepo(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := &When{GitRepo: boolPtr(false)}
+	if w.Match(cwd) {
+		t.Error("git_repo: false should NOT match inside a git repo")
+	}
+}
+
+func TestWhenGitRepoAndDir(t *testing.T) {
+	// Both conditions must match (AND logic).
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := &When{
+		Dir:     StringOrSlice{"/nonexistent/**"},
+		GitRepo: boolPtr(true),
+	}
+	if w.Match(cwd) {
+		t.Error("should not match when dir pattern does not match")
+	}
+}
+
+func TestLoadConfigWithWhenGitRepo(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	content := `
+modules:
+  cwd:
+    enabled: true
+    when:
+      git_repo: true
+  gcp:
+    enabled: true
+    when:
+      git_repo: false
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg := Load(path)
+	if cfg.Modules.Cwd.When == nil || cfg.Modules.Cwd.When.GitRepo == nil {
+		t.Fatal("cwd.when.git_repo should not be nil")
+	}
+	if *cfg.Modules.Cwd.When.GitRepo != true {
+		t.Error("cwd.when.git_repo should be true")
+	}
+	if cfg.Modules.Gcp.When == nil || cfg.Modules.Gcp.When.GitRepo == nil {
+		t.Fatal("gcp.when.git_repo should not be nil")
+	}
+	if *cfg.Modules.Gcp.When.GitRepo != false {
+		t.Error("gcp.when.git_repo should be false")
+	}
+}
+
 func contains(s, sub string) bool {
 	return len(s) >= len(sub) && (s == sub || len(s) > 0 && containsStr(s, sub))
 }
