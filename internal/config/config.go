@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -107,26 +108,53 @@ func (s *StringOrSlice) UnmarshalYAML(data []byte) error {
 }
 
 // When defines conditions for when a module should be displayed.
+// All specified conditions must match (AND logic).
 type When struct {
-	Dir StringOrSlice `yaml:"dir"`
+	Dir     StringOrSlice `yaml:"dir"`
+	GitRepo *bool         `yaml:"git_repo"`
 }
 
-// Match returns true if cwd matches any of the dir patterns.
-// Returns true if When is nil or Dir is empty (no restriction).
+// Match returns true if cwd satisfies all conditions.
+// Returns true if When is nil or all fields are empty (no restriction).
 func (w *When) Match(cwd string) bool {
-	if w == nil || len(w.Dir) == 0 {
+	if w == nil {
 		return true
 	}
-	home, _ := os.UserHomeDir()
-	for _, pattern := range w.Dir {
-		if strings.HasPrefix(pattern, "~/") {
-			pattern = filepath.Join(home, pattern[2:])
+
+	// Check dir patterns (OR within patterns)
+	if len(w.Dir) > 0 {
+		matched := false
+		home, _ := os.UserHomeDir()
+		for _, pattern := range w.Dir {
+			if strings.HasPrefix(pattern, "~/") {
+				pattern = filepath.Join(home, pattern[2:])
+			}
+			if ok, _ := doublestar.Match(pattern, cwd); ok {
+				matched = true
+				break
+			}
 		}
-		if matched, _ := doublestar.Match(pattern, cwd); matched {
-			return true
+		if !matched {
+			return false
 		}
 	}
-	return false
+
+	// Check git_repo condition
+	if w.GitRepo != nil {
+		inRepo := isInsideGitRepo(cwd)
+		if *w.GitRepo != inRepo {
+			return false
+		}
+	}
+
+	return true
+}
+
+// isInsideGitRepo returns true if cwd is inside a git work tree.
+func isInsideGitRepo(cwd string) bool {
+	cmd := exec.Command("git", "--no-optional-locks", "-C", cwd, "rev-parse", "--is-inside-work-tree")
+	out, err := cmd.Output()
+	return err == nil && strings.TrimSpace(string(out)) == "true"
 }
 
 type Config struct {
@@ -702,6 +730,9 @@ modules:
   #     dir:
   #       - "~/src/github.com/mycompany/**"
   #       - "~/work/infra/**"
+  # Git repo condition:
+  #   when:
+  #     git_repo: true    # only inside git repos (false = only outside)
 
   cwd:
     enabled: true

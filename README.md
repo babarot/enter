@@ -154,6 +154,7 @@ modules:
     enabled: false
     # when:                   # conditional display (see below)
     #   dir: "~/src/github.com/mycompany/**"
+    #   git_repo: true        # only inside git repos (false = only outside)
 
   claude:
     enabled: true
@@ -269,18 +270,40 @@ modules:
       dir:
         - "**/github.com/mycompany/**"
         - "**/k8s-*/**"
+
+  # Only show inside git repos
+  git:
+    enabled: true
+    when:
+      git_repo: true
+
+  # Only show outside git repos
+  cwd:
+    enabled: true
+    when:
+      git_repo: false
+
+  # Conditions can be combined (AND logic)
+  claude:
+    enabled: true
+    when:
+      dir: "~/src/**"
+      git_repo: true
 ```
 
 - `dir` accepts a single glob pattern or a list of patterns
-- Multiple patterns are OR'd — the module is shown if **any** pattern matches the current directory
+- Multiple `dir` patterns are OR'd — the module is shown if **any** pattern matches the current directory
 - Patterns use [doublestar](https://github.com/bmatcuk/doublestar) glob syntax (`**` matches any number of path segments)
 - `~/` is expanded to the home directory
+- `git_repo` accepts `true` or `false` — controls whether the module is shown inside or outside git repositories
+- When multiple conditions are specified (`dir` + `git_repo`), all must match (AND logic)
 
 | Condition | Behavior |
 |-----------|----------|
 | `enabled: false` | Module is always hidden (condition is not evaluated) |
 | `enabled: true`, no `when` | Module is always shown |
 | `enabled: true`, `when.dir` set | Module is shown only when cwd matches |
+| `enabled: true`, `when.git_repo` set | Module is shown only when git repo condition matches |
 
 ### Git Symbols
 
