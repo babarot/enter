@@ -82,6 +82,7 @@ const (
 	ModuleGcp    = "gcp"
 	ModuleClaude = "claude"
 	ModuleCodex  = "codex"
+	ModuleLs     = "ls"
 )
 
 // Theme
@@ -177,6 +178,7 @@ type ModulesConfig struct {
 	Gcp    GcpConfig    `yaml:"gcp"`
 	Claude ClaudeConfig `yaml:"claude"`
 	Codex  CodexConfig  `yaml:"codex"`
+	Ls     LsConfig     `yaml:"ls"`
 }
 
 type CwdConfig struct {
@@ -281,6 +283,12 @@ type CodexConfigView struct {
 	Mode string `yaml:"mode"` // "always" | "auto"
 }
 
+type LsConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Cmd     string `yaml:"cmd"`
+	When    *When  `yaml:"when"`
+}
+
 // WhenFor returns the When condition for the named module, or nil if none is set.
 func (mc *ModulesConfig) WhenFor(name string) *When {
 	switch name {
@@ -296,12 +304,14 @@ func (mc *ModulesConfig) WhenFor(name string) *When {
 		return mc.Claude.When
 	case ModuleCodex:
 		return mc.Codex.When
+	case ModuleLs:
+		return mc.Ls.When
 	default:
 		return nil
 	}
 }
 
-var DefaultModuleOrder = []string{ModuleCwd, ModuleGit, ModuleKube, ModuleGcp, ModuleClaude, ModuleCodex}
+var DefaultModuleOrder = []string{ModuleCwd, ModuleGit, ModuleKube, ModuleGcp, ModuleClaude, ModuleCodex, ModuleLs}
 
 func Default() *Config {
 	return &Config{
@@ -784,5 +794,9 @@ modules:
     fields:                 # list fields to display (order matters, omit to hide)
       config:
         mode: "auto"        # always (show ✓/✗) | auto (show existing only)
+
+  ls:
+    enabled: false
+    cmd: "ls"               # command to run (e.g. "exa --icons", "tree -L 1")
 `
 }
