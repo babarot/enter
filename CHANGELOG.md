@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.5.0](https://github.com/babarot/enter/compare/v0.4.0...v0.5.0) - 2026-04-14
+### New Features
+- Add git_repo condition to when clause by @babarot in https://github.com/babarot/enter/pull/17
+- Add ls module for displaying arbitrary command output by @babarot in https://github.com/babarot/enter/pull/18
+### Improvements
+- Adapt table rendering to terminal width with line truncation by @babarot in https://github.com/babarot/enter/pull/14
+- Add --no-optional-locks flag to git command execution by @babarot in https://github.com/babarot/enter/pull/16
+
 ## [v0.4.0](https://github.com/babarot/enter/compare/v0.3.0...v0.4.0) - 2026-03-19
 ### New Features
 - Introduce `fields` config to separate display rows from module flags by @babarot in https://github.com/babarot/enter/pull/11
