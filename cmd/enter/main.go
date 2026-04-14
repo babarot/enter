@@ -93,6 +93,7 @@ func main() {
 		config.ModuleGcp:    &modules.GcpModule{},
 		config.ModuleClaude: &modules.ClaudeModule{},
 		config.ModuleCodex:  &modules.CodexModule{},
+		config.ModuleLs:     &modules.LsModule{},
 	}
 
 	// Order modules based on config, filtering by "when" conditions

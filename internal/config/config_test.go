@@ -140,7 +140,7 @@ func TestGenerateDefault(t *testing.T) {
 
 func TestDefaultModuleOrder(t *testing.T) {
 	cfg := Default()
-	want := []string{"cwd", "git", "kube", "gcp", "claude", "codex"}
+	want := []string{"cwd", "git", "kube", "gcp", "claude", "codex", "ls"}
 	if len(cfg.ModuleOrder) != len(want) {
 		t.Fatalf("ModuleOrder length: got %d, want %d", len(cfg.ModuleOrder), len(want))
 	}
@@ -167,8 +167,8 @@ modules:
 	os.WriteFile(path, []byte(content), 0o644)
 
 	cfg := Load(path)
-	// Should be: claude, git, cwd, then defaults not in config (kube, gcp, codex)
-	want := []string{"claude", "git", "cwd", "kube", "gcp", "codex"}
+	// Should be: claude, git, cwd, then defaults not in config (kube, gcp, codex, ls)
+	want := []string{"claude", "git", "cwd", "kube", "gcp", "codex", "ls"}
 	if len(cfg.ModuleOrder) != len(want) {
 		t.Fatalf("ModuleOrder length: got %d, want %d\norder: %v", len(cfg.ModuleOrder), len(want), cfg.ModuleOrder)
 	}
@@ -564,6 +564,7 @@ func TestWhenForAllModules(t *testing.T) {
 		ModuleGcp:    {Dir: StringOrSlice{"/gcp/**"}},
 		ModuleClaude: {Dir: StringOrSlice{"/claude/**"}},
 		ModuleCodex:  {Dir: StringOrSlice{"/codex/**"}},
+		ModuleLs:     {Dir: StringOrSlice{"/ls/**"}},
 	}
 	cfg.Modules.Cwd.When = conds[ModuleCwd]
 	cfg.Modules.Git.When = conds[ModuleGit]
@@ -571,6 +572,7 @@ func TestWhenForAllModules(t *testing.T) {
 	cfg.Modules.Gcp.When = conds[ModuleGcp]
 	cfg.Modules.Claude.When = conds[ModuleClaude]
 	cfg.Modules.Codex.When = conds[ModuleCodex]
+	cfg.Modules.Ls.When = conds[ModuleLs]
 
 	for name, want := range conds {
 		if got := cfg.Modules.WhenFor(name); got != want {

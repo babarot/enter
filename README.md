@@ -16,7 +16,7 @@ The traditional answer is to cram this into your shell prompt or tmux statusline
 **enter** takes a different approach. Instead of displaying context *all the time*, it shows it **on demand** — when you press Enter on an empty command line. It detects the current directory, figures out what's relevant (git repo? Claude Code project? Kubernetes context?), and displays a clean, structured summary. Nothing clutters your prompt. Nothing runs on every command. Just press Enter when you need to know.
 
 - **Directory-aware**: Only shows what's relevant. Git info appears in repos, Claude usage appears in Claude projects, Codex config appears in Codex projects, kube context appears when configured.
-- **Pluggable**: Each info source (git, kube, gcp, claude, codex) is an independent module. Enable what you need.
+- **Pluggable**: Each info source (git, kube, gcp, claude, codex, ls) is an independent module. Enable what you need.
 - **Configurable display**: Table or inline format. Tree-style keys. Themes. Symbol customization. All via a single YAML file.
 - **Fast**: All modules run in parallel. The display order follows your config file — no extra `order` fields needed.
 
@@ -124,15 +124,15 @@ key_style: "tree"
 modules:
   cwd:
     enabled: true
-    style: "short"            # short | parent | full | basename
+    style: "short"             # short | parent | full | basename
 
   git:
     enabled: true
-    indicator: true           # show "not a git repo" outside repos
-    fields:                   # list fields to display (order matters, omit to hide)
-      url:                    # repository HTTPS URL (parsed from remote)
+    indicator: true            # show "not a git repo" outside repos
+    fields:                    # list fields to display (order matters, omit to hide)
+      url:                     # repository HTTPS URL (parsed from remote)
       cwd:
-        style: "tree"         # breadcrumb | tree
+        style: "tree"          # breadcrumb | tree
       summary:
         symbols:
           unstaged: "*"
@@ -142,37 +142,41 @@ modules:
           ahead: "↑"
           behind: "↓"
       status:
-        style: "short"        # short | long
+        style: "short"         # short | long
 
   kube:
     enabled: false
     fields:
       context:
-        clean: true           # strip cloud provider prefixes (GKE/EKS/AKS)
+        clean: true            # strip cloud provider prefixes (GKE/EKS/AKS)
 
   gcp:
     enabled: false
-    # when:                   # conditional display (see below)
+    # when:                    # conditional display (see below)
     #   dir: "~/src/github.com/mycompany/**"
-    #   git_repo: true        # only inside git repos (false = only outside)
+    #   git_repo: true         # only inside git repos (false = only outside)
 
   claude:
     enabled: true
-    mode: "auto"              # always | auto
-    fields:                   # list fields to display (order matters, omit to hide)
+    mode: "auto"               # always | auto
+    fields:                    # list fields to display (order matters, omit to hide)
       usage:
-        bar_style: "block"    # block (▰▱) | dot (●○) | fill (█░)
+        bar_style: "block"     # block (▰▱) | dot (●○) | fill (█░)
         time_style: "absolute" # absolute (3:00pm) | relative (22m left)
-        cache_ttl: 120        # cache duration in seconds
+        cache_ttl: 120         # cache duration in seconds
       config:
-        mode: "auto"          # always (show ✓/✗) | auto (show existing only)
+        mode: "auto"           # always (show ✓/✗) | auto (show existing only)
 
   codex:
     enabled: true
-    mode: "auto"              # always | auto
-    fields:                   # list fields to display (order matters, omit to hide)
+    mode: "auto"               # always | auto
+    fields:                    # list fields to display (order matters, omit to hide)
       config:
-        mode: "auto"          # always (show ✓/✗) | auto (show existing only)
+        mode: "auto"           # always (show ✓/✗) | auto (show existing only)
+
+  ls:
+    enabled: false
+    cmd: "ls"                  # command to run (e.g. "eza --icons --color=always .", "tree -L 1")
 ```
 
 ### Table Row Keys
@@ -195,6 +199,7 @@ modules:
 | `claude.usage.7d` | `fields: usage:` | 7-day rolling window utilization |
 | `claude.config` | `fields: config:` | Project config status (CLAUDE.md, rules, skills, etc.) |
 | `codex.config` | `fields: config:` | Project config status (AGENTS.md, config.toml, etc.) |
+| `ls` | ls module | Output of the configured command |
 
 ### Themes
 
@@ -223,7 +228,7 @@ modules:
     enabled: true
 ```
 
-Modules not listed in the config file are appended in default order (`cwd`, `git`, `kube`, `gcp`, `claude`, `codex`).
+Modules not listed in the config file are appended in default order (`cwd`, `git`, `kube`, `gcp`, `claude`, `codex`, `ls`).
 
 ### Field Visibility
 
@@ -304,6 +309,40 @@ modules:
 | `enabled: true`, no `when` | Module is always shown |
 | `enabled: true`, `when.dir` set | Module is shown only when cwd matches |
 | `enabled: true`, `when.git_repo` set | Module is shown only when git repo condition matches |
+
+### Ls Module
+
+The `ls` module runs an arbitrary command and displays its output. Useful for showing directory contents with tools like `eza`, `tree`, or plain `ls`.
+
+```yaml
+modules:
+  ls:
+    enabled: true
+    cmd: "eza --long --group-directories-first --icons=always --color=always ."
+```
+
+- `cmd` is passed to `sh -c`, so shell features (pipes, `&&`, quoting) work as expected
+- YAML block scalars (`|`) are supported — newlines are collapsed into spaces before execution
+- ANSI color codes from the command are preserved in the output
+- If the command fails, stderr is shown in the output for debugging
+- Commands have a 5-second timeout to prevent hangs
+
+Multi-line example:
+
+```yaml
+modules:
+  ls:
+    enabled: true
+    cmd: |
+      eza
+      --long
+      --group-directories-first
+      --icons=always
+      --color=always
+      .
+    when:
+      git_repo: false
+```
 
 ### Git Symbols
 
