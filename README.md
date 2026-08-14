@@ -1,3 +1,5 @@
+
+
 # enter
 
 Press Enter. See where you are.
@@ -70,7 +72,7 @@ How it works:
 --format <table|inline>           Display format (overrides config)
 --theme <name>                    Color theme (overrides config)
 --config <path>                   Path to config file
---last-dir <path>                 Previous directory (for trigger: on_cd)
+--last-dir <path>                 Previous working directory (for trigger: on_cd)
 --init-shell <zsh|bash>           Print shell integration snippet
 --init-config                     Generate default config file
 --edit-config                     Open config file in $EDITOR
