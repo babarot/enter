@@ -23,9 +23,9 @@ jobs:
       actions: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
@@ -33,7 +33,7 @@ jobs:
         run: go test ./... -coverprofile=coverage.out -covermode=count
       - name: Run octocov
         if: runner.os == 'Linux'
-        uses: k1LoW/octocov-action@73d561f65d59e66899ed5c87e4621a913b5d5c20 # v1.5.0
+        uses: k1LoW/octocov-action@a167dc0dee441b7ffc45e1b862ab55ec0d87f278 # v1.5.2
       - name: Extract coverage
         if: runner.os == 'Linux' && github.ref == 'refs/heads/main'
         run: |
@@ -41,7 +41,7 @@ jobs:
           echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
       - name: Update coverage badge
         if: runner.os == 'Linux' && github.ref == 'refs/heads/main'
-        uses: Schneegans/dynamic-badges-action@v1.7.0
+        uses: Schneegans/dynamic-badges-action@28b0fa8bdeb46170ac397105ece0c1fe58f68910 # v1.9.0
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 5f07873547f89c2d2b930848a96e9113
