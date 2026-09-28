@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss/tree"
 
@@ -31,6 +32,22 @@ type gitInfo struct {
 	repoURL   string // "https://github.com/owner/repo"
 	repoRoot  string // absolute path to repo root
 	relPath   string // cwd relative to repo root (empty = at root)
+	upstream  string // "origin/main" (empty = no upstream)
+	gitDir    string // absolute path to this worktree's git dir
+}
+
+// worktreeInfo describes which worktree cwd belongs to.
+type worktreeInfo struct {
+	linked   bool   // true = a worktree added by "git worktree add"
+	mainPath string // path of the main worktree
+}
+
+// baseInfo describes how far HEAD is from the base branch.
+type baseInfo struct {
+	ref       string    // "origin/main"
+	ahead     int       // commits in HEAD but not in ref
+	behind    int       // commits in ref but not in HEAD
+	fetchedAt time.Time // zero = never fetched
 }
 
 func (m *GitModule) Run(ctx *module.Context) *module.Output {
@@ -126,6 +143,25 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 		cwdSegs = append(cwdSegs, module.NewSegment(cwdText, module.Muted))
 	}
 
+	var worktreeSegs []module.Segment
+	if gitCfg.Fields.Worktree.Present() {
+		worktreeSegs = worktreeSegments(getWorktreeInfo(ctx.Cwd, info.gitDir), gitCfg.Fields.Worktree.Get())
+	}
+
+	var baseSegs []module.Segment
+	if gitCfg.Fields.Base.Present() {
+		baseCfg := gitCfg.Fields.Base.Get()
+		symbols := config.DefaultGitSymbols()
+		if gitCfg.Fields.Summary.Present() {
+			symbols = gitCfg.Fields.Summary.Get().Symbols
+		}
+		if base := getBaseInfo(ctx.Cwd, baseCfg.Ref); base != nil {
+			if baseCfg.Mode == config.GitModeAlways || base.ref != info.upstream {
+				baseSegs = baseSegments(base, symbols, baseCfg.ShowFetchAge(), time.Now())
+			}
+		}
+	}
+
 	// Build inline segments (all in one line)
 	var segments []module.Segment
 	if gitCfg.Fields.Url.Present() && info.repoURL != "" {
@@ -133,6 +169,12 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 		segments = append(segments, module.Plain(" "))
 	}
 	segments = append(segments, statusSegs...)
+	for _, extra := range [][]module.Segment{worktreeSegs, baseSegs} {
+		if len(extra) > 0 {
+			segments = append(segments, module.Plain(" "))
+			segments = append(segments, extra...)
+		}
+	}
 	if len(cwdSegs) > 0 {
 		segments = append(segments, module.Plain(" "))
 		segments = append(segments, cwdSegs...)
@@ -158,6 +200,18 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 			Segments: statusSegs,
 		})
 	}
+	if len(worktreeSegs) > 0 {
+		rows = append(rows, module.Row{
+			Key:      "git.worktree",
+			Segments: worktreeSegs,
+		})
+	}
+	if len(baseSegs) > 0 {
+		rows = append(rows, module.Row{
+			Key:      "git.base",
+			Segments: baseSegs,
+		})
+	}
 	if gitCfg.Fields.Status.Present() {
 		statusSegs := getGitStatusSegments(ctx.Cwd, gitCfg.Fields.Status.Get().Style)
 		if len(statusSegs) > 0 {
@@ -173,6 +227,156 @@ func (m *GitModule) Run(ctx *module.Context) *module.Output {
 		Segments: segments,
 		Rows:     rows,
 	}
+}
+
+func worktreeSegments(wt *worktreeInfo, cfg config.GitWorktreeConfig) []module.Segment {
+	if wt == nil {
+		return nil
+	}
+	if !wt.linked {
+		if cfg.Mode != config.GitModeAlways {
+			return nil
+		}
+		return []module.Segment{module.NewSegment("main worktree", module.Muted)}
+	}
+	home, _ := os.UserHomeDir()
+	return []module.Segment{
+		module.NewSegment("linked", module.Warning),
+		module.NewSegment(" ← "+formatPath(wt.mainPath, home, config.CwdStyleFull), module.Muted),
+	}
+}
+
+func baseSegments(b *baseInfo, symbols config.GitSymbols, showFetchAge bool, now time.Time) []module.Segment {
+	segs := []module.Segment{module.NewSegment(b.ref, module.Secondary)}
+	switch {
+	case b.ahead == 0 && b.behind == 0:
+		segs = append(segs, module.NewSegment(" =", module.Success))
+	default:
+		if b.ahead > 0 {
+			segs = append(segs, module.NewSegment(fmt.Sprintf(" %s%d", symbols.Ahead, b.ahead), module.Success))
+		}
+		if b.behind > 0 {
+			segs = append(segs, module.NewSegment(fmt.Sprintf(" %s%d", symbols.Behind, b.behind), module.Danger))
+		}
+	}
+	if showFetchAge {
+		segs = append(segs, module.NewSegment(" ("+formatFetchAge(b.fetchedAt, now)+")", module.Muted))
+	}
+	return segs
+}
+
+// formatFetchAge describes how old the remote-tracking refs are.
+func formatFetchAge(fetchedAt, now time.Time) string {
+	if fetchedAt.IsZero() {
+		return "never fetched"
+	}
+	d := now.Sub(fetchedAt)
+	switch {
+	case d < time.Minute:
+		return "fetched just now"
+	case d < time.Hour:
+		return fmt.Sprintf("fetched %dm ago", int(d.Minutes()))
+	case d < 24*time.Hour:
+		return fmt.Sprintf("fetched %dh ago", int(d.Hours()))
+	default:
+		return fmt.Sprintf("fetched %dd ago", int(d.Hours()/24))
+	}
+}
+
+// getWorktreeInfo reports whether cwd is in a linked worktree.
+// A linked worktree has its own git dir under <common-dir>/worktrees/,
+// so the two differ; in the main worktree they are the same.
+func getWorktreeInfo(cwd, gitDir string) *worktreeInfo {
+	commonDir, ok := execGit(cwd, "rev-parse", "--git-common-dir")
+	if !ok || gitDir == "" {
+		return nil
+	}
+	if !filepath.IsAbs(commonDir) {
+		commonDir = filepath.Join(cwd, commonDir)
+	}
+	wt := &worktreeInfo{linked: cleanPath(gitDir) != cleanPath(commonDir)}
+	if !wt.linked {
+		return wt
+	}
+	// The first entry of "git worktree list" is always the main worktree.
+	if list, ok := execGit(cwd, "worktree", "list", "--porcelain"); ok {
+		first, _, _ := strings.Cut(list, "\n")
+		wt.mainPath = strings.TrimPrefix(first, "worktree ")
+	}
+	return wt
+}
+
+// getBaseInfo counts commits between HEAD and the base ref.
+// It does not fetch, so the counts are as fresh as the last fetch.
+func getBaseInfo(cwd, ref string) *baseInfo {
+	if ref == "" {
+		ref = defaultBaseRef(cwd)
+	}
+	if ref == "" {
+		return nil
+	}
+	counts, ok := execGit(cwd, "rev-list", "--left-right", "--count", "HEAD..."+ref)
+	if !ok {
+		return nil
+	}
+	b := &baseInfo{ref: ref}
+	if _, err := fmt.Sscanf(counts, "%d %d", &b.ahead, &b.behind); err != nil {
+		return nil
+	}
+	b.fetchedAt = lastFetchTime(cwd, ref)
+	return b
+}
+
+// lastFetchTime returns the latest of two signals, since neither covers
+// every fetch on its own:
+//   - the reflog of ref, which records a fetch from any worktree but only
+//     when the ref actually moved
+//   - FETCH_HEAD, which is written on every fetch but lives in each
+//     worktree's own git dir, so all of them are checked
+func lastFetchTime(cwd, ref string) time.Time {
+	var latest time.Time
+	if sel, ok := execGit(cwd, "reflog", "show", "-1", "--date=unix", "--format=%gd", "refs/remotes/"+ref); ok {
+		// "origin/main@{1759080445}"
+		if _, stamp, found := strings.Cut(sel, "@{"); found {
+			var sec int64
+			if _, err := fmt.Sscanf(strings.TrimSuffix(stamp, "}"), "%d", &sec); err == nil {
+				latest = time.Unix(sec, 0)
+			}
+		}
+	}
+	commonDir, ok := execGit(cwd, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	if !ok {
+		return latest
+	}
+	heads, _ := filepath.Glob(filepath.Join(commonDir, "worktrees", "*", "FETCH_HEAD"))
+	for _, path := range append(heads, filepath.Join(commonDir, "FETCH_HEAD")) {
+		if st, err := os.Stat(path); err == nil && st.ModTime().After(latest) {
+			latest = st.ModTime()
+		}
+	}
+	return latest
+}
+
+// defaultBaseRef picks the remote's default branch: origin/HEAD if set,
+// otherwise the first of origin/main and origin/master that exists.
+func defaultBaseRef(cwd string) string {
+	if ref, ok := execGit(cwd, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"); ok && ref != "" {
+		return ref
+	}
+	for _, ref := range []string{"origin/main", "origin/master"} {
+		if _, ok := execGit(cwd, "rev-parse", "--verify", "--quiet", "refs/remotes/"+ref); ok {
+			return ref
+		}
+	}
+	return ""
+}
+
+// cleanPath resolves symlinks so that /tmp and /private/tmp compare equal.
+func cleanPath(p string) string {
+	if resolved, err := filepath.EvalSymlinks(p); err == nil {
+		return resolved
+	}
+	return filepath.Clean(p)
 }
 
 func getGitStatusSegments(cwd, style string) []module.Segment {
@@ -352,6 +556,9 @@ func getGitInfo(cwd string) *gitInfo {
 				}
 			}
 
+		case strings.HasPrefix(line, "# branch.upstream "):
+			info.upstream = strings.TrimPrefix(line, "# branch.upstream ")
+
 		case strings.HasPrefix(line, "# branch.oid "):
 			oid = strings.TrimPrefix(line, "# branch.oid ")
 
@@ -400,6 +607,7 @@ func getGitInfo(cwd string) *gitInfo {
 		if !filepath.IsAbs(gitDir) {
 			gitDir = filepath.Join(cwd, gitDir)
 		}
+		info.gitDir = gitDir
 		info.operation = detectOperation(gitDir)
 	}
 
