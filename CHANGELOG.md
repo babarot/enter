@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.6.0](https://github.com/babarot/enter/compare/v0.5.0...v0.6.0) - 2026-09-28
+
+### New Features
+- Add worktree and base fields to git module by @babarot in https://github.com/babarot/enter/pull/21
+
 ## [v0.5.0](https://github.com/babarot/enter/compare/v0.4.0...v0.5.0) - 2026-09-27
 
 ### New Features
