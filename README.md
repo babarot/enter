@@ -143,6 +143,12 @@ modules:
           behind: "↓"
       status:
         style: "short"         # short | long
+      worktree:
+        mode: "auto"           # auto (linked worktree only) | always
+      base:
+        ref: ""                # "" = origin/HEAD → origin/main → origin/master
+        mode: "auto"           # auto (hide when upstream is the base) | always
+        fetch_age: true        # show time since last fetch
 
   kube:
     enabled: false
@@ -188,6 +194,8 @@ modules:
 | `git.cwd` | `fields: cwd:` | Position in repo (breadcrumb or tree) |
 | `git.summary` | `fields: summary:` | Branch, flags, ahead/behind, operation |
 | `git.status` | `fields: status:` | git status output (short or long) |
+| `git.worktree` | `fields: worktree:` | Linked worktree and the path of the main worktree |
+| `git.base` | `fields: base:` | Commits ahead/behind the base branch, with time since last fetch |
 | `kube.context` | `fields: context:` | Kubernetes context (cleaned if `clean: true`) |
 | `kube.namespace` | `fields: context:` | Kubernetes namespace (defaults to "default") |
 | `kube.cluster` | `fields: context:` | Kubernetes cluster name |
@@ -358,6 +366,21 @@ The `symbols` map in the git config customizes the status indicators shown in `g
        │└── staged changes
        └── unstaged changes
 ```
+
+### Worktree and Base
+
+`git.summary` shows ahead/behind against the branch's upstream. That does not tell you how far you are from `main` when the upstream is a different branch, as with a topic branch pushed to `origin/<topic>` or a worktree created by a tool that sets its own upstream. `worktree` and `base` cover this:
+
+```
+├── worktree │ linked ← ~/src/github.com/owner/repo
+├── base     │ origin/main ↓10 (fetched 1m ago)
+```
+
+- `worktree` shows `linked` inside a worktree added by `git worktree add`, with the path of the main worktree. In `mode: "always"` it also shows `main worktree` in the main one
+- `base` counts commits between `HEAD` and the base ref. With `ref: ""` the base is `origin/HEAD`, falling back to `origin/main` and then `origin/master`
+- In `mode: "auto"`, `base` is hidden when the upstream is the base itself (e.g. `main` tracking `origin/main`), since `git.summary` already shows the same counts
+- `base` reuses the `ahead` / `behind` symbols of `summary`
+- enter never fetches, so the counts are as fresh as the last fetch. `fetch_age` shows how old they are. It takes the latest of the base ref's reflog and every worktree's `FETCH_HEAD`, because `FETCH_HEAD` is written per worktree while remote-tracking refs are shared
 
 ## License
 

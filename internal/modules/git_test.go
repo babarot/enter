@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/babarot/enter/internal/config"
 	"github.com/babarot/enter/internal/module"
@@ -506,4 +507,144 @@ func segmentsText(segs []module.Segment) string {
 		b.WriteString(s.Text)
 	}
 	return b.String()
+}
+
+func runGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v failed: %s: %s", args, err, out)
+	}
+}
+
+// initRepoWithOrigin makes a clone whose origin/main is 2 commits ahead of HEAD.
+func initRepoWithOrigin(t *testing.T) string {
+	t.Helper()
+	upstream := initTestRepo(t)
+	runGit(t, upstream, "branch", "-M", "main")
+
+	clone := filepath.Join(t.TempDir(), "clone")
+	runGit(t, upstream, "clone", upstream, clone)
+	runGit(t, clone, "config", "user.email", "test@test.com")
+	runGit(t, clone, "config", "user.name", "Test")
+
+	runGit(t, upstream, "commit", "--allow-empty", "-m", "second")
+	runGit(t, upstream, "commit", "--allow-empty", "-m", "third")
+	runGit(t, clone, "fetch")
+	return clone
+}
+
+func TestGetWorktreeInfo(t *testing.T) {
+	dir := initTestRepo(t)
+	info := getGitInfo(dir)
+	wt := getWorktreeInfo(dir, info.gitDir)
+	if wt == nil || wt.linked {
+		t.Fatalf("main worktree: got %+v, want linked=false", wt)
+	}
+
+	linked := filepath.Join(t.TempDir(), "linked")
+	runGit(t, dir, "worktree", "add", "-b", "feature", linked)
+	info = getGitInfo(linked)
+	wt = getWorktreeInfo(linked, info.gitDir)
+	if wt == nil || !wt.linked {
+		t.Fatalf("linked worktree: got %+v, want linked=true", wt)
+	}
+	if cleanPath(wt.mainPath) != cleanPath(dir) {
+		t.Errorf("mainPath: got %q, want %q", wt.mainPath, dir)
+	}
+}
+
+func TestGetBaseInfo(t *testing.T) {
+	clone := initRepoWithOrigin(t)
+	runGit(t, clone, "checkout", "-b", "feature")
+	runGit(t, clone, "commit", "--allow-empty", "-m", "mine")
+
+	b := getBaseInfo(clone, "")
+	if b == nil {
+		t.Fatal("getBaseInfo returned nil")
+	}
+	if b.ref != "origin/main" {
+		t.Errorf("ref: got %q, want origin/main", b.ref)
+	}
+	if b.ahead != 1 || b.behind != 2 {
+		t.Errorf("ahead/behind: got %d/%d, want 1/2", b.ahead, b.behind)
+	}
+	if b.fetchedAt.IsZero() {
+		t.Error("fetchedAt should be set after fetch")
+	}
+}
+
+func TestGetBaseInfoNoRemote(t *testing.T) {
+	dir := initTestRepo(t)
+	if b := getBaseInfo(dir, ""); b != nil {
+		t.Errorf("repo without origin: got %+v, want nil", b)
+	}
+}
+
+func TestGitModuleBaseAutoHidesWhenUpstreamIsBase(t *testing.T) {
+	clone := initRepoWithOrigin(t)
+	cfg := config.Default()
+	ctx := &module.Context{Cwd: clone, Config: cfg}
+
+	// On main tracking origin/main: summary already shows ↓2
+	out := (&GitModule{}).Run(ctx)
+	for _, row := range out.Rows {
+		if row.Key == "git.base" {
+			t.Error("git.base should be hidden when upstream is the base (auto)")
+		}
+	}
+
+	// A branch tracking something else shows the distance to origin/main
+	runGit(t, clone, "checkout", "-b", "feature")
+	out = (&GitModule{}).Run(ctx)
+	var got string
+	for _, row := range out.Rows {
+		if row.Key == "git.base" {
+			got = segmentsText(row.Segments)
+		}
+	}
+	if !strings.HasPrefix(got, "origin/main ↓2") {
+		t.Errorf("git.base: got %q, want prefix %q", got, "origin/main ↓2")
+	}
+}
+
+func TestFormatFetchAge(t *testing.T) {
+	now := time.Date(2026, 9, 29, 12, 0, 0, 0, time.UTC)
+	tests := []struct {
+		at   time.Time
+		want string
+	}{
+		{time.Time{}, "never fetched"},
+		{now.Add(-10 * time.Second), "fetched just now"},
+		{now.Add(-5 * time.Minute), "fetched 5m ago"},
+		{now.Add(-3 * time.Hour), "fetched 3h ago"},
+		{now.Add(-50 * time.Hour), "fetched 2d ago"},
+	}
+	for _, tt := range tests {
+		if got := formatFetchAge(tt.at, now); got != tt.want {
+			t.Errorf("formatFetchAge(%v): got %q, want %q", tt.at, got, tt.want)
+		}
+	}
+}
+
+func TestLastFetchTimeSeesOtherWorktrees(t *testing.T) {
+	clone := initRepoWithOrigin(t)
+	// Leave FETCH_HEAD in the linked worktree as the only recent signal
+	runGit(t, clone, "reflog", "expire", "--expire=now", "--all")
+	fetchHead := filepath.Join(clone, ".git", "FETCH_HEAD")
+	old := time.Now().Add(-48 * time.Hour)
+	if err := os.Chtimes(fetchHead, old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	// A fetch in a linked worktree writes that worktree's own FETCH_HEAD
+	linked := filepath.Join(t.TempDir(), "linked")
+	runGit(t, clone, "worktree", "add", "-b", "feature", linked)
+	runGit(t, linked, "fetch")
+
+	got := lastFetchTime(clone, "origin/main")
+	if time.Since(got) > time.Hour {
+		t.Errorf("lastFetchTime from main worktree: got %v, want the linked worktree's fetch", got)
+	}
 }

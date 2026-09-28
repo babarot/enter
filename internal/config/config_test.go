@@ -715,3 +715,24 @@ func containsStr(s, sub string) bool {
 	}
 	return false
 }
+
+func TestLoadGitWorktreeAndBaseEmptyKeys(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	data := "modules:\n  git:\n    enabled: true\n    fields:\n      worktree:\n      base:\n"
+	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg := Load(path)
+
+	wt := cfg.Modules.Git.Fields.Worktree
+	if !wt.Present() || wt.Get().Mode != GitModeAuto {
+		t.Errorf("worktree: present=%v mode=%q, want present auto", wt.Present(), wt.Get().Mode)
+	}
+	b := cfg.Modules.Git.Fields.Base
+	if !b.Present() || b.Get().Mode != GitModeAuto || !b.Get().ShowFetchAge() {
+		t.Errorf("base: present=%v cfg=%+v, want present auto with fetch_age", b.Present(), b.Get())
+	}
+	if cfg.Modules.Git.Fields.Summary.Present() {
+		t.Error("summary should be hidden when not listed")
+	}
+}

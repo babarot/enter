@@ -49,6 +49,12 @@ const (
 	GitStatusStyleLong  = "long"
 )
 
+// GitMode (worktree / base fields)
+const (
+	GitModeAuto   = "auto"
+	GitModeAlways = "always"
+)
+
 // ClaudeMode
 const (
 	ClaudeModeAuto   = "auto"
@@ -159,16 +165,16 @@ func isInsideGitRepo(cwd string) bool {
 }
 
 type Config struct {
-	Theme        string        `yaml:"theme"`
-	Format       string        `yaml:"format"`
-	Separator    string        `yaml:"separator"`
-	Trigger      string        `yaml:"trigger"`   // "always" | "on_cd"
-	KeyStyle     string        `yaml:"key_style"` // "flat" | "tree"
-	Modules      ModulesConfig `yaml:"modules"`
+	Theme     string        `yaml:"theme"`
+	Format    string        `yaml:"format"`
+	Separator string        `yaml:"separator"`
+	Trigger   string        `yaml:"trigger"`   // "always" | "on_cd"
+	KeyStyle  string        `yaml:"key_style"` // "flat" | "tree"
+	Modules   ModulesConfig `yaml:"modules"`
 
 	// Derived from YAML key order (not a YAML field)
-	ModuleOrder    []string            `yaml:"-"`
-	SubKeyOrder    map[string][]string `yaml:"-"` // module name → sub-key order
+	ModuleOrder []string            `yaml:"-"`
+	SubKeyOrder map[string][]string `yaml:"-"` // module name → sub-key order
 }
 
 type ModulesConfig struct {
@@ -195,10 +201,12 @@ type GitConfig struct {
 }
 
 type GitFields struct {
-	Url     Field[GitUrlConfig]     `yaml:"url"`
-	Cwd     Field[GitCwdConfig]     `yaml:"cwd"`
-	Summary Field[GitSummaryConfig] `yaml:"summary"`
-	Status  Field[GitStatusConfig]  `yaml:"status"`
+	Url      Field[GitUrlConfig]      `yaml:"url"`
+	Cwd      Field[GitCwdConfig]      `yaml:"cwd"`
+	Summary  Field[GitSummaryConfig]  `yaml:"summary"`
+	Status   Field[GitStatusConfig]   `yaml:"status"`
+	Worktree Field[GitWorktreeConfig] `yaml:"worktree"`
+	Base     Field[GitBaseConfig]     `yaml:"base"`
 }
 
 type GitUrlConfig struct{}
@@ -213,6 +221,21 @@ type GitSummaryConfig struct {
 
 type GitStatusConfig struct {
 	Style string `yaml:"style"` // "short" | "long"
+}
+
+type GitWorktreeConfig struct {
+	Mode string `yaml:"mode"` // "auto" (linked worktree only) | "always"
+}
+
+type GitBaseConfig struct {
+	Ref      string `yaml:"ref"`       // "" = origin/HEAD, then origin/main, origin/master
+	Mode     string `yaml:"mode"`      // "auto" (hide when upstream is the base) | "always"
+	FetchAge *bool  `yaml:"fetch_age"` // show time since last fetch (default: true)
+}
+
+// ShowFetchAge reports whether the time since the last fetch is displayed.
+func (c GitBaseConfig) ShowFetchAge() bool {
+	return c.FetchAge == nil || *c.FetchAge
 }
 
 type GitSymbols struct {
@@ -330,10 +353,12 @@ func Default() *Config {
 				Enabled:   true,
 				Indicator: true,
 				Fields: GitFields{
-					Url:     NewField(GitUrlConfig{}),
-					Cwd:     NewField(GitCwdConfig{Style: GitCwdStyleTree}),
-					Summary: NewField(GitSummaryConfig{Symbols: DefaultGitSymbols()}),
-					Status:  NewField(GitStatusConfig{Style: GitStatusStyleShort}),
+					Url:      NewField(GitUrlConfig{}),
+					Cwd:      NewField(GitCwdConfig{Style: GitCwdStyleTree}),
+					Summary:  NewField(GitSummaryConfig{Symbols: DefaultGitSymbols()}),
+					Status:   NewField(GitStatusConfig{Style: GitStatusStyleShort}),
+					Worktree: NewField(GitWorktreeConfig{Mode: GitModeAuto}),
+					Base:     NewField(GitBaseConfig{Mode: GitModeAuto}),
 				},
 			},
 			Kube: KubeConfig{
@@ -505,6 +530,20 @@ func (c *Config) validate() {
 		}
 		c.Modules.Git.Fields.Status.Set(st)
 	}
+	if c.Modules.Git.Fields.Worktree.Present() {
+		wt := c.Modules.Git.Fields.Worktree.Get()
+		if wt.Mode != GitModeAuto && wt.Mode != GitModeAlways {
+			wt.Mode = GitModeAuto
+		}
+		c.Modules.Git.Fields.Worktree.Set(wt)
+	}
+	if c.Modules.Git.Fields.Base.Present() {
+		b := c.Modules.Git.Fields.Base.Get()
+		if b.Mode != GitModeAuto && b.Mode != GitModeAlways {
+			b.Mode = GitModeAuto
+		}
+		c.Modules.Git.Fields.Base.Set(b)
+	}
 
 	// Claude
 	cl := &c.Modules.Claude
@@ -568,6 +607,12 @@ func ensureFieldsPresent(keys []string, fields interface{}) {
 		}
 		if keySet["status"] && !f.Status.Present() {
 			f.Status.MarkPresent()
+		}
+		if keySet["worktree"] && !f.Worktree.Present() {
+			f.Worktree.MarkPresent()
+		}
+		if keySet["base"] && !f.Base.Present() {
+			f.Base.MarkPresent()
 		}
 	case *KubeFields:
 		if keySet["context"] && !f.Context.Present() {
@@ -765,6 +810,12 @@ modules:
           behind: "↓"
       status:
         style: "short"      # short | long
+      worktree:
+        mode: "auto"        # auto (linked worktree only) | always
+      base:
+        ref: ""             # "" = origin/HEAD → origin/main → origin/master
+        mode: "auto"        # auto (hide when upstream is the base) | always
+        fetch_age: true     # show time since last fetch
 
   kube:
     enabled: false
