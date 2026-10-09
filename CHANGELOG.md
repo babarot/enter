@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.6.1](https://github.com/babarot/enter/compare/v0.6.0...v0.6.1) - 2026-10-09
+
+### Others
+- Sync shared files from github-config by @babarot in https://github.com/babarot/enter/pull/26
+
 ## [v0.6.0](https://github.com/babarot/enter/compare/v0.5.0...v0.6.0) - 2026-09-28
 
 ### New Features
